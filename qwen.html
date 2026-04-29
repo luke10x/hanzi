@@ -17,6 +17,7 @@
       --danger: #dc3545;
       --text: #212529;
       --text-muted: #6c757d;
+      --grid-color: rgba(13, 110, 253, 0.15);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; overflow: hidden; }
@@ -25,16 +26,20 @@
     .app { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
     
     /* Header */
-    .row-1 { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; z-index: 10; flex-shrink: 0; }
-    .burger { background: none; border: none; font-size: 24px; cursor: pointer; padding: 4px; color: var(--text); }
-    .toggles { display: flex; gap: 12px; font-size: 14px; }
-    .toggle-label { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    .row-1 { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; z-index: 10; flex-shrink: 0; gap: 6px; }
+    .burger { background: none; border: none; font-size: 22px; cursor: pointer; padding: 4px 8px; color: var(--text); border-radius: 4px; }
+    .burger:hover { background: #f1f3f5; }
+    .toggles { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+    .toggle-btn { padding: 4px 10px; font-size: 12px; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+    .toggle-btn:hover { background: #f1f3f5; }
+    .toggle-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
     
     .menu-dropdown { position: absolute; top: 100%; left: 0; width: 100%; max-height: 50vh; overflow-y: auto; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 20; }
     .menu-dropdown.open { display: block; }
-    .menu-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .menu-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; }
     .menu-item:hover { background: #f1f3f5; }
     .menu-item:last-child { border-bottom: none; }
+    .menu-item.new-quiz { font-weight: 600; color: var(--primary); }
     
     /* View Containers */
     .view { flex: 1; min-height: 0; display: none; overflow: hidden; }
@@ -42,23 +47,29 @@
     
     /* Quiz View Rows */
     .row-2 { padding: 10px; text-align: center; font-weight: 600; font-size: 1.1rem; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .hint-bar { padding: 6px 12px; background: #e7f1ff; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-muted); text-align: center; flex-shrink: 0; display: none; }
+    .hint-bar.visible { display: block; }
+    
     .row-3 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; max-height: 25vh; overflow-y: auto; }
     .box-wrap { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.1s; }
     .box-wrap:hover { transform: scale(1.05); }
-    .box { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border); border-radius: 8px; background: #f8f9fa; font-size: 24px; transition: all 0.2s; user-select: none; }
+    .box { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border); border-radius: 8px; background: #f8f9fa; font-size: 22px; transition: all 0.2s; user-select: none; font-weight: 500; }
     .box.active { border-color: var(--primary); background: #e7f1ff; box-shadow: 0 0 0 3px rgba(13,110,253,0.2); }
     .box.in-progress { background: #fff3cd; border-color: var(--warning); }
     .box.complete { background: #d1e7dd; border-color: var(--success); }
-    .pinyin { font-size: 11px; margin-top: 3px; color: var(--text-muted); height: 14px; text-align: center; width: 100%; }
-    .spacer { width: 16px; }
+    .pinyin { font-size: 10px; margin-top: 3px; color: var(--text-muted); height: 13px; text-align: center; width: 100%; font-family: monospace; }
+    .spacer { width: 14px; }
     
-    .row-4 { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; background: #f1f3f5; padding: 8px; min-height: 0; overflow: hidden; }
+    .row-4 { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; background: #f1f3f5; padding: 8px; min-height: 0; overflow: hidden; position: relative; }
     #canvas-container { height: 100%; width: auto; aspect-ratio: 1 / 1; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
-    #character-target-div { width: 100%; height: 100%; touch-action: none; }
+    #character-target-div { width: 100%; height: 100%; touch-action: none; position: relative; }
+    .grid-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; }
+    .grid-overlay.visible { display: block; }
+    .grid-overlay svg { width: 100%; height: 100%; }
     
     .row-5 { display: flex; flex-direction: column; padding: 10px; background: var(--surface); border-top: 1px solid var(--border); gap: 6px; flex-shrink: 0; max-height: 20vh; }
-    #log { flex: 1; min-height: 40px; resize: none; padding: 8px; font-family: ui-monospace, monospace; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: #f8f9fa; color: var(--text); }
-    .log-actions { display: flex; justify-content: flex-end; }
+    #log { flex: 1; min-height: 40px; resize: none; padding: 8px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid var(--border); border-radius: 6px; background: #f8f9fa; color: var(--text); line-height: 1.4; }
+    .log-actions { display: flex; justify-content: flex-end; gap: 6px; }
     
     /* Generator View */
     .generator-view { padding: 16px; gap: 16px; overflow-y: auto; background: var(--bg); align-items: center; }
@@ -101,13 +112,43 @@
     <header class="row-1">
       <button class="burger" id="burger-btn" aria-label="Menu">☰</button>
       <div class="toggles">
-        <label class="toggle-label"><input type="checkbox" id="contour-toggle"> Show Contour</label>
+        <button class="toggle-btn" id="grid-toggle" title="Toggle grid">⊞ Grid</button>
+        <button class="toggle-btn" id="contour-toggle" title="Toggle character outline">◑ Contour</button>
+        <button class="toggle-btn" id="hint-toggle" title="Toggle hint">💡 Hint</button>
       </div>
       <div class="menu-dropdown" id="menu-dropdown"></div>
     </header>
 
     <!-- Quiz View -->
-    <main id="quiz-view" class="view quiz-view"></main>
+    <main id="quiz-view" class="view quiz-view">
+      <div class="row-2" id="question-text"></div>
+      <div class="hint-bar" id="hint-bar"></div>
+      <div class="row-3" id="boxes-container"></div>
+      <div class="row-4">
+        <div id="canvas-container">
+          <div id="character-target-div"></div>
+          <div class="grid-overlay" id="grid-overlay">
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+              <defs>
+                <pattern id="grid" width="25" height="25" patternUnits="userSpaceOnUse">
+                  <rect width="25" height="25" fill="none" stroke="var(--grid-color)" stroke-width="0.5"/>
+                </pattern>
+              </defs>
+              <rect width="100" height="100" fill="url(#grid)"/>
+              <line x1="50" y1="0" x2="50" y2="100" stroke="var(--grid-color)" stroke-width="1" opacity="0.5"/>
+              <line x1="0" y1="50" x2="100" y2="50" stroke="var(--grid-color)" stroke-width="1" opacity="0.5"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="row-5">
+        <textarea id="log" readonly placeholder="Session log will appear here..."></textarea>
+        <div class="log-actions">
+          <button class="secondary" id="clear-log-btn">Clear</button>
+          <button id="copy-log-btn">Copy Log</button>
+        </div>
+      </div>
+    </main>
 
     <!-- Generator View -->
     <main id="generator-view" class="view generator-view">
@@ -122,14 +163,21 @@
         <div id="tab-form" class="tab-content active">
           <div class="form-group">
             <label for="input-question">Question (English)</label>
-            <input type="text" id="input-question" class="form-control" placeholder="e.g. I love coding">
+            <input type="text" id="input-question" class="form-control" placeholder="e.g. How do you say 'Hello' in Chinese?">
           </div>
-
           <div class="form-group">
-            <label>Answer Characters</label>
-            <div id="char-list"></div>
-            <button type="button" class="secondary" id="add-char-btn" style="width:100%; margin-top:8px;">+ Add Character</button>
-            <div class="help-text">Tip: Use the "Space" button to add gaps between words.</div>
+            <label for="input-answer">Answer (Chinese characters only)</label>
+            <input type="text" id="input-answer" class="form-control" placeholder="e.g. 你好" maxlength="20">
+            <div class="help-text">Spaces will create word gaps. Only include characters to draw.</div>
+          </div>
+          <div class="form-group">
+            <label for="input-pinyin">Pinyin (comma-separated)</label>
+            <input type="text" id="input-pinyin" class="form-control" placeholder="e.g. nǐ, hǎo">
+            <div class="help-text">Must match number of Chinese characters (ignore spaces).</div>
+          </div>
+          <div class="form-group">
+            <label for="input-hint">Hint (optional)</label>
+            <input type="text" id="input-hint" class="form-control" placeholder="e.g. Two identical characters">
           </div>
 
           <div class="actions">
@@ -139,7 +187,9 @@
         </div>
 
         <div id="tab-ai" class="tab-content">
-          <p style="font-size: 14px; margin-bottom: 10px;">Copy this prompt to any AI chat. Paste the JSON response into a Base64 encoder and append to URL as <code>#payload=...</code></p>
+          <p style="font-size: 13px; margin-bottom: 10px; line-height: 1.4;">
+            Copy this prompt to any AI chat. Paste the JSON response, base64 encode it, and append to URL as <code>#payload=...</code>
+          </p>
           <div class="prompt-box" id="ai-prompt-text"></div>
           <button id="copy-prompt-btn" style="width: 100%;">Copy Prompt</button>
         </div>
@@ -149,80 +199,127 @@
 
 <script>
 (() => {
+  // --- State ---
   const state = {
     data: null,
     activeIndex: 0,
     boxStates: [],
     log: [],
     writer: null,
-    showContour: false,
+    ui: {
+      showContour: false,
+      showGrid: false,
+      showHint: false
+    },
     history: JSON.parse(localStorage.getItem('hanzi_history') || '[]')
   };
 
+  // --- DOM Refs ---
   const els = {
     quizView: document.getElementById('quiz-view'),
     generatorView: document.getElementById('generator-view'),
-    charList: document.getElementById('char-list'),
-    inputQuestion: document.getElementById('input-question'),
-    addCharBtn: document.getElementById('add-char-btn'),
-    generateBtn: document.getElementById('generate-btn'),
-    resetFormBtn: document.getElementById('reset-form-btn'),
+    questionText: document.getElementById('question-text'),
+    hintBar: document.getElementById('hint-bar'),
+    boxesContainer: document.getElementById('boxes-container'),
+    canvasContainer: document.getElementById('canvas-container'),
+    targetDiv: document.getElementById('character-target-div'),
+    gridOverlay: document.getElementById('grid-overlay'),
+    log: document.getElementById('log'),
     burgerBtn: document.getElementById('burger-btn'),
     menuDropdown: document.getElementById('menu-dropdown'),
+    gridToggle: document.getElementById('grid-toggle'),
     contourToggle: document.getElementById('contour-toggle'),
+    hintToggle: document.getElementById('hint-toggle'),
+    copyLogBtn: document.getElementById('copy-log-btn'),
+    clearLogBtn: document.getElementById('clear-log-btn'),
+    // Generator
+    inputQuestion: document.getElementById('input-question'),
+    inputAnswer: document.getElementById('input-answer'),
+    inputPinyin: document.getElementById('input-pinyin'),
+    inputHint: document.getElementById('input-hint'),
+    generateBtn: document.getElementById('generate-btn'),
+    resetFormBtn: document.getElementById('reset-form-btn'),
     aiPromptText: document.getElementById('ai-prompt-text'),
     copyPromptBtn: document.getElementById('copy-prompt-btn'),
     tabs: document.querySelectorAll('.tab'),
     tabContents: document.querySelectorAll('.tab-content')
   };
 
-  const AI_PROMPT = `You are a Chinese character quiz generator. 
-When I give you an English sentence or phrase, output ONLY a valid JSON object with this exact structure:
+  // --- AI Prompt (Standard Structure) ---
+  const AI_PROMPT = `You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.
+
+To generate a quiz link, create a JSON object with these fields:
+- "question": The English question/prompt (e.g., "How do you say 'Hello' in Chinese?")
+- "answer": The Chinese answer as a string (e.g., "你好")
+- "pinyin": Array of pinyin for each Chinese character (e.g., ["nǐ", "hǎo"])
+- "hint": Optional hint text
+- "id": Optional unique ID
+
+Then base64 encode the JSON and append it as a hash to this URL:
+http://this_origin/this_html.html#<base64_encoded_json>
+
+Example payload before encoding:
 {
-  "q": "English translation prompt",
-  "a": [
-    {"c": "汉", "p": "hàn"},
-    {"c": "字", "p": "zì"}
-  ]
+  "question": "How do you say 'Thank you' in Chinese?",
+  "answer": "谢谢",
+  "pinyin": ["xiè", "xie"],
+  "hint": "Two identical characters"
 }
+
 Rules:
-- "c" is a single Chinese character or a space/punctuation.
-- "p" is pinyin for that character (leave empty for spaces).
-- Keep arrays short (1-8 characters ideal).
-- Do not include markdown, explanations, or extra text. Just the JSON.`;
+- Only include Chinese characters in "answer" that should be drawn (hanzi)
+- Spaces in the answer string will be rendered as word separators
+- Pinyin array length must match the number of hanzi characters
+- The app tracks stroke-by-stroke progress and mistakes
+- Users can copy their session log to share back with you for analysis`;
 
   els.aiPromptText.textContent = AI_PROMPT;
 
+  // --- Load/Save UI State ---
+  function loadUIState() {
+    const saved = localStorage.getItem('hanzi_ui_state');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        state.ui = { ...state.ui, ...parsed };
+      } catch (e) {}
+    }
+    // Apply to toggles
+    els.gridToggle.classList.toggle('active', state.ui.showGrid);
+    els.contourToggle.classList.toggle('active', state.ui.showContour);
+    els.hintToggle.classList.toggle('active', state.ui.showHint);
+    els.gridOverlay.classList.toggle('visible', state.ui.showGrid);
+  }
+
+  function saveUIState() {
+    localStorage.setItem('hanzi_ui_state', JSON.stringify(state.ui));
+  }
+
   // --- Generator Logic ---
-  let charFieldCount = 0;
-  function addCharField(char = '', pinyin = '') {
-    const row = document.createElement('div');
-    row.className = 'char-row';
-    row.innerHTML = `
-      <input type="text" class="form-control char-input" placeholder="字" maxlength="2" value="${char}" data-role="char">
-      <input type="text" class="form-control pinyin-input" placeholder="pinyin" value="${pinyin}" data-role="pinyin">
-      <button type="button" class="danger btn-icon" data-action="remove" title="Remove">×</button>
-      <button type="button" class="secondary btn-icon" data-action="space" title="Add Space">␣</button>
-    `;
-    els.charList.appendChild(row);
-    row.querySelector('[data-action="remove"]').onclick = () => row.remove();
-    row.querySelector('[data-action="space"]').onclick = () => addCharField(' ', '');
-  }
-
-  function collectFormData() {
-    const q = els.inputQuestion.value.trim();
-    const a = [];
-    els.charList.querySelectorAll('.char-row').forEach(row => {
-      const c = row.querySelector('[data-role="char"]').value.trim();
-      const p = row.querySelector('[data-role="pinyin"]').value.trim();
-      if (c) a.push({ c, p });
-    });
-    return { q, a };
-  }
-
   function generatePayloadAndRedirect() {
-    const payload = collectFormData();
-    if (!payload.q || payload.a.length === 0) return alert('Please enter a question and at least one character.');
+    const question = els.inputQuestion.value.trim();
+    const answer = els.inputAnswer.value.trim();
+    const pinyinRaw = els.inputPinyin.value.trim();
+    const hint = els.inputHint.value.trim();
+    
+    if (!question || !answer) return alert('Please enter a question and answer.');
+    
+    // Extract only Chinese characters from answer
+    const hanzi = answer.match(/[\u4e00-\u9fff]/g) || [];
+    const pinyin = pinyinRaw ? pinyinRaw.split(',').map(p => p.trim()).filter(p => p) : [];
+    
+    if (pinyin.length !== hanzi.length) {
+      return alert(`Pinyin count (${pinyin.length}) must match Chinese character count (${hanzi.length}).`);
+    }
+    
+    const payload = {
+      question,
+      answer,
+      pinyin,
+      ...(hint && { hint }),
+      id: Date.now().toString(36)
+    };
+    
     try {
       const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
       window.location.hash = `payload=${encoded}`;
@@ -233,7 +330,7 @@ Rules:
   function decodePayload(b64) {
     try {
       const obj = JSON.parse(decodeURIComponent(escape(atob(b64))));
-      if (!obj.q || !Array.isArray(obj.a)) throw new Error("Invalid structure");
+      if (!obj.question || !obj.answer || !Array.isArray(obj.pinyin)) throw new Error("Invalid structure");
       return obj;
     } catch (e) { return null; }
   }
@@ -246,17 +343,19 @@ Rules:
       els.quizView.classList.remove('active');
       els.quizView.innerHTML = '';
       els.generatorView.classList.add('active');
-      if (els.charList.children.length === 0) addCharField();
     }
   }
 
   function init() {
+    loadUIState();
+    
     const hash = window.location.hash.slice(1);
     const match = hash.match(/^payload=(.+)$/);
     const payload = match ? decodePayload(match[1]) : null;
     
     if (!payload) {
       initView('generator');
+      renderMenu();
       return;
     }
 
@@ -264,14 +363,24 @@ Rules:
     saveToHistory(match[0]);
     initView('quiz');
     renderApp();
-    requestAnimationFrame(() => loadBox(0));
+    requestAnimationFrame(() => {
+      applyUIState();
+      loadBox(0);
+    });
   }
 
   function loadData(data) {
     state.data = data;
     state.activeIndex = 0;
     state.log = [];
-    state.boxStates = data.a.map((_, i) => ({ index: i, mistakes: 0, completed: false, char: data.a[i].c }));
+    // Extract hanzi characters only for box states
+    const hanzi = data.answer.match(/[\u4e00-\u9fff]/g) || [];
+    state.boxStates = hanzi.map((char, i) => ({
+      index: i,
+      char,
+      mistakes: 0,
+      completed: false
+    }));
   }
 
   function saveToHistory(hashStr) {
@@ -284,104 +393,141 @@ Rules:
 
   // --- UI Rendering ---
   function renderApp() {
-    els.quizView.innerHTML = `
-      <div class="row-2" id="question-text">${state.data.q}</div>
-      <div class="row-3" id="boxes-container"></div>
-      <div class="row-4">
-        <div id="canvas-container"><div id="character-target-div"></div></div>
-      </div>
-      <div class="row-5">
-        <textarea id="log" readonly placeholder="Drawing log will appear here..."></textarea>
-        <div class="log-actions"><button id="copy-log-btn">Copy Log</button></div>
-      </div>
-    `;
-
-    const boxContainer = document.getElementById('boxes-container');
-    state.data.a.forEach((item, i) => {
+    els.questionText.textContent = state.data.question;
+    els.hintBar.textContent = state.data.hint || '';
+    els.hintBar.classList.toggle('visible', state.ui.showHint && state.data.hint);
+    
+    // Build boxes
+    els.boxesContainer.innerHTML = '';
+    const answer = state.data.answer;
+    let hanziIndex = 0;
+    
+    for (let i = 0; i < answer.length; i++) {
+      const char = answer[i];
       const wrap = document.createElement('div');
       wrap.className = 'box-wrap';
-      wrap.onclick = () => loadBox(i);
-      if (item.c.trim() === '') {
+      
+      if (char === ' ') {
         wrap.innerHTML = '<div class="spacer"></div>';
-      } else {
+      } else if (/[\u4e00-\u9fff]/.test(char)) {
+        // Show "?" if not completed, actual char if done
+        const isComplete = state.boxStates[hanziIndex]?.completed;
+        const displayChar = isComplete ? char : '?';
+        const pinyin = state.data.pinyin[hanziIndex] || '';
+        
         wrap.innerHTML = `
-          <div class="box" id="box-${i}">${item.c}</div>
-          <div class="pinyin" id="py-${i}">${item.p || ''}</div>
+          <div class="box" id="box-${hanziIndex}" data-char="${char}">${displayChar}</div>
+          <div class="pinyin">${pinyin}</div>
         `;
+        wrap.onclick = () => loadBox(hanziIndex);
+        hanziIndex++;
       }
-      boxContainer.appendChild(wrap);
-    });
-
-    document.getElementById('copy-log-btn').onclick = () => {
-      const log = document.getElementById('log');
-      navigator.clipboard.writeText(log.value).then(() => {
-        const btn = document.getElementById('copy-log-btn');
-        const orig = btn.textContent; btn.textContent = 'Copied!';
-        setTimeout(() => btn.textContent = orig, 1500);
+      els.boxesContainer.appendChild(wrap);
+    }
+    
+    // Log buttons
+    els.copyLogBtn.onclick = () => {
+      navigator.clipboard.writeText(els.log.value).then(() => {
+        const orig = els.copyLogBtn.textContent;
+        els.copyLogBtn.textContent = 'Copied!';
+        setTimeout(() => els.copyLogBtn.textContent = orig, 1500);
       });
     };
+    els.clearLogBtn.onclick = () => {
+      els.log.value = '';
+      state.log = [];
+    };
+    
     updateBoxUI();
   }
 
   function updateBoxUI() {
-    state.data?.a.forEach((_, i) => {
+    state.boxStates.forEach((st, i) => {
       const box = document.getElementById(`box-${i}`);
       if (!box) return;
-      const st = state.boxStates[i];
       box.className = 'box';
       if (i === state.activeIndex) box.classList.add('active');
-      if (st.completed) box.classList.add('complete');
-      else if (st.mistakes > 0) box.classList.add('in-progress');
+      if (st.completed) {
+        box.classList.add('complete');
+        box.textContent = st.char; // Reveal character
+      } else if (st.mistakes > 0) {
+        box.classList.add('in-progress');
+        box.textContent = '?';
+      } else {
+        box.textContent = '?';
+      }
     });
   }
 
+  function timestamp() {
+    const now = new Date();
+    return now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+
   function appendLog(msg) {
-    state.log.push(msg);
-    const log = document.getElementById('log');
-    if (log) log.value += msg + '\n';
+    const line = `[${timestamp()}] ${msg}`;
+    state.log.push(line);
+    els.log.value += line + '\n';
+    els.log.scrollTop = els.log.scrollHeight;
   }
 
   function findNextIncomplete() {
     return state.boxStates.findIndex((s, i) => !s.completed && i !== state.activeIndex);
   }
 
+  // --- Apply UI State to DOM ---
+  function applyUIState() {
+    els.gridOverlay.classList.toggle('visible', state.ui.showGrid);
+    els.hintBar.classList.toggle('visible', state.ui.showHint && state.data?.hint);
+    if (state.writer && state.data) {
+      state.writer.updateCharacter({ showCharacter: state.ui.showContour });
+    }
+  }
+
   // --- HanziWriter ---
   function initWriter() {
-    const target = document.getElementById('character-target-div');
+    const target = els.targetDiv;
     target.innerHTML = '';
     if (state.writer) { state.writer.destroy(); state.writer = null; }
     
-    const char = state.data?.a[state.activeIndex]?.c;
-    if (!char || char.trim() === '') return;
+    const char = state.boxStates[state.activeIndex]?.char;
+    if (!char) return;
 
-    const container = document.getElementById('canvas-container');
+    const container = els.canvasContainer;
     const size = Math.min(container.clientWidth, container.clientHeight, 800);
 
     state.writer = HanziWriter.create(target, char, {
-      width: size, height: size, showCharacter: state.showContour, padding: 5,
-      strokeAnimationSpeed: 1, strokeHighlightSpeed: 1.5
+      width: size,
+      height: size,
+      showCharacter: state.ui.showContour,
+      showOutline: state.ui.showContour,
+      padding: 5,
+      strokeAnimationSpeed: 1,
+      strokeHighlightSpeed: 1.5,
+      highlightColor: '#198754',
+      drawingColor: '#0d6efd'
     });
 
-    const attachQuiz = (w) => {
-      w.quiz({
-        onMistake: (sd) => {
-          state.boxStates[state.activeIndex].mistakes++;
-          appendLog(`[Box ${state.activeIndex + 1}] Mistake on stroke ${sd.strokeNum}. Total: ${sd.totalMistakes}`);
-          updateBoxUI();
-        },
-        onCorrectStroke: () => {},
-        onComplete: (summary) => {
-          state.boxStates[state.activeIndex].completed = true;
-          state.boxStates[state.activeIndex].mistakes = summary.totalMistakes;
-          appendLog(`[Box ${state.activeIndex + 1}] ✅ Completed! Mistakes: ${summary.totalMistakes}`);
-          updateBoxUI();
-          const next = findNextIncomplete();
-          if (next !== -1) setTimeout(() => loadBox(next), 1200);
-          else appendLog(`🎉 All characters completed for this question!`);
-        }
-      });
-    };
-    attachQuiz(state.writer);
+    state.writer.quiz({
+      onMistake: (sd) => {
+        state.boxStates[state.activeIndex].mistakes++;
+        const total = state.boxStates[state.activeIndex].mistakes;
+        appendLog(`❌ [${char}] stroke ${sd.strokeNum} mistake (total: ${total})`);
+        updateBoxUI();
+      },
+      onCorrectStroke: (sd) => {
+        appendLog(`✅ [${char}] stroke ${sd.strokeNum} correct!`);
+      },
+      onComplete: (summary) => {
+        state.boxStates[state.activeIndex].completed = true;
+        appendLog(`🎉 [${char}] COMPLETED! Total mistakes: ${summary.totalMistakes}`);
+        updateBoxUI();
+        
+        const next = findNextIncomplete();
+        if (next !== -1) setTimeout(() => loadBox(next), 1500);
+        else appendLog(`🏆 All characters completed!`);
+      }
+    });
     updateBoxUI();
   }
 
@@ -390,7 +536,7 @@ Rules:
     initWriter();
   };
 
-  // Resize Handler
+  // --- Resize Handler ---
   let resizeTimeout;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimeout);
@@ -398,52 +544,70 @@ Rules:
       if (state.writer && state.data) {
         state.writer.destroy();
         state.writer = null;
-        const target = document.getElementById('character-target-div');
-        target.innerHTML = '';
-        const char = state.data.a[state.activeIndex].c;
-        const container = document.getElementById('canvas-container');
-        const size = Math.min(container.clientWidth, container.clientHeight, 800);
-        state.writer = HanziWriter.create(target, char, {
-          width: size, height: size, showCharacter: state.showContour, padding: 5,
-          strokeAnimationSpeed: 1, strokeHighlightSpeed: 1.5
-        });
-        const attachQuiz = (w) => {
-          w.quiz({
+        els.targetDiv.innerHTML = '';
+        const char = state.boxStates[state.activeIndex]?.char;
+        if (char) {
+          const container = els.canvasContainer;
+          const size = Math.min(container.clientWidth, container.clientHeight, 800);
+          state.writer = HanziWriter.create(els.targetDiv, char, {
+            width: size, height: size,
+            showCharacter: state.ui.showContour,
+            showOutline: state.ui.showContour,
+            padding: 5, strokeAnimationSpeed: 1, strokeHighlightSpeed: 1.5,
+            highlightColor: '#198754', drawingColor: '#0d6efd'
+          });
+          // Re-attach quiz
+          state.writer.quiz({
             onMistake: (sd) => {
               state.boxStates[state.activeIndex].mistakes++;
-              appendLog(`[Box ${state.activeIndex + 1}] Mistake on stroke ${sd.strokeNum}. Total: ${sd.totalMistakes}`);
+              const total = state.boxStates[state.activeIndex].mistakes;
+              appendLog(`❌ [${char}] stroke ${sd.strokeNum} mistake (total: ${total})`);
               updateBoxUI();
             },
-            onCorrectStroke: () => {},
+            onCorrectStroke: (sd) => appendLog(`✅ [${char}] stroke ${sd.strokeNum} correct!`),
             onComplete: (summary) => {
               state.boxStates[state.activeIndex].completed = true;
-              state.boxStates[state.activeIndex].mistakes = summary.totalMistakes;
-              appendLog(`[Box ${state.activeIndex + 1}] ✅ Completed! Mistakes: ${summary.totalMistakes}`);
+              appendLog(`🎉 [${char}] COMPLETED! Total mistakes: ${summary.totalMistakes}`);
               updateBoxUI();
               const next = findNextIncomplete();
-              if (next !== -1) setTimeout(() => loadBox(next), 1200);
-              else appendLog(`🎉 All characters completed!`);
+              if (next !== -1) setTimeout(() => loadBox(next), 1500);
+              else appendLog(`🏆 All characters completed!`);
             }
           });
-        };
-        attachQuiz(state.writer);
+        }
       }
     }, 250);
   });
 
-  // --- Menu & Tabs ---
+  // --- Menu ---
   function renderMenu() {
     els.menuDropdown.innerHTML = '';
+    
+    // New Quiz link (always first)
+    const newQuiz = document.createElement('div');
+    newQuiz.className = 'menu-item new-quiz';
+    newQuiz.textContent = '➕ New Quiz';
+    newQuiz.onclick = () => {
+      window.location.hash = '';
+      els.menuDropdown.classList.remove('open');
+    };
+    els.menuDropdown.appendChild(newQuiz);
+    
     if (state.history.length === 0) {
-      els.menuDropdown.innerHTML = '<div class="menu-item" style="color:#999">No history yet</div>';
+      const empty = document.createElement('div');
+      empty.className = 'menu-item';
+      empty.style.color = '#999';
+      empty.textContent = 'No history yet';
+      els.menuDropdown.appendChild(empty);
       return;
     }
+    
     state.history.forEach(hash => {
       const item = document.createElement('div');
       item.className = 'menu-item';
       try {
         const obj = decodePayload(hash.replace('payload=', ''));
-        item.textContent = obj.q || 'Saved session';
+        item.textContent = obj.question || 'Saved session';
       } catch { item.textContent = 'Saved session'; }
       item.onclick = () => {
         window.location.hash = hash;
@@ -453,16 +617,47 @@ Rules:
     });
   }
 
-  els.burgerBtn.onclick = (e) => { e.stopPropagation(); els.menuDropdown.classList.toggle('open'); };
+  // --- Event Listeners ---
+  els.burgerBtn.onclick = (e) => {
+    e.stopPropagation();
+    renderMenu();
+    els.menuDropdown.classList.toggle('open');
+  };
+  
   document.addEventListener('click', (e) => {
-    if (!els.menuDropdown.contains(e.target) && e.target !== els.burgerBtn) els.menuDropdown.classList.remove('open');
+    if (!els.menuDropdown.contains(e.target) && e.target !== els.burgerBtn) {
+      els.menuDropdown.classList.remove('open');
+    }
   });
 
-  els.contourToggle.onchange = (e) => {
-    state.showContour = e.target.checked;
-    if (state.writer && state.data) initWriter();
+  // Toggle buttons
+  els.gridToggle.onclick = () => {
+    state.ui.showGrid = !state.ui.showGrid;
+    els.gridToggle.classList.toggle('active', state.ui.showGrid);
+    els.gridOverlay.classList.toggle('visible', state.ui.showGrid);
+    saveUIState();
+  };
+  
+  els.contourToggle.onclick = () => {
+    state.ui.showContour = !state.ui.showContour;
+    els.contourToggle.classList.toggle('active', state.ui.showContour);
+    if (state.writer && state.data) {
+      state.writer.updateCharacter({ showCharacter: state.ui.showContour });
+    }
+    saveUIState();
+    appendLog(state.ui.showContour ? 'Contour enabled' : 'Contour disabled');
+  };
+  
+  els.hintToggle.onclick = () => {
+    state.ui.showHint = !state.ui.showHint;
+    els.hintToggle.classList.toggle('active', state.ui.showHint);
+    if (state.data?.hint) {
+      els.hintBar.classList.toggle('visible', state.ui.showHint);
+    }
+    saveUIState();
   };
 
+  // Generator tabs
   els.tabs.forEach(tab => {
     tab.onclick = () => {
       els.tabs.forEach(t => t.classList.remove('active'));
@@ -472,16 +667,18 @@ Rules:
     };
   });
 
-  els.addCharBtn.onclick = () => addCharField();
+  // Generator form
   els.generateBtn.onclick = generatePayloadAndRedirect;
   els.resetFormBtn.onclick = () => {
     els.inputQuestion.value = '';
-    els.charList.innerHTML = '';
-    addCharField();
+    els.inputAnswer.value = '';
+    els.inputPinyin.value = '';
+    els.inputHint.value = '';
   };
   els.copyPromptBtn.onclick = () => {
     navigator.clipboard.writeText(els.aiPromptText.textContent).then(() => {
-      const orig = els.copyPromptBtn.textContent; els.copyPromptBtn.textContent = 'Copied!';
+      const orig = els.copyPromptBtn.textContent;
+      els.copyPromptBtn.textContent = 'Copied!';
       setTimeout(() => els.copyPromptBtn.textContent = orig, 1500);
     });
   };
@@ -489,7 +686,6 @@ Rules:
   // --- Init ---
   window.addEventListener('hashchange', init);
   document.addEventListener('DOMContentLoaded', init);
-  renderMenu();
 })();
 </script>
 </body>

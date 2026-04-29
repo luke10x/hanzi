@@ -8,269 +8,261 @@
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
 
 <style>
-body {
-  margin: 0;
-  font-family: sans-serif;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-}
-
-.row { padding: 8px; }
-
-.topbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #222;
-  color: white;
-}
-
-.boxes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
+body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; }
+.topbar { display:flex; gap:6px; padding:6px; background:#222; color:#fff; align-items:center; }
+button { padding:6px; cursor:pointer; }
+.row { padding:8px; }
+.boxes { display:flex; flex-wrap:wrap; gap:6px; }
 .char-box {
-  width: 64px;
-  height: 64px;
-  border: 2px solid #ccc;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
+  width:64px; height:64px; border:2px solid #ccc;
+  display:flex; flex-direction:column; justify-content:center; align-items:center;
+  cursor:pointer;
 }
+.active { border-color:orange; }
+.done { background:#c8f7c5; }
+.in-progress { background:#fff3cd; }
 
-.char-box.active { border-color: orange; }
-.char-box.done { background: #c8f7c5; }
-.char-box.in-progress { background: #fff3cd; }
-
-.canvas-container {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-#canvas {
-  width: 100%;
-  max-width: 420px;
-  aspect-ratio: 1 / 1;
-}
+#canvas { width:100%; max-width:420px; aspect-ratio:1; margin:auto; }
 
 .log {
-  height: 120px;
-  overflow-y: auto;
-  background: #111;
-  color: #0f0;
-  font-size: 12px;
+  height:140px; overflow:auto;
+  background:#111; color:#0f0; font-size:12px; padding:6px;
 }
 
-input {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 6px;
+.menu {
+  position:fixed; left:0; top:0; width:220px; height:100%;
+  background:#333; color:#fff; padding:10px;
+  transform:translateX(-100%);
+  transition:0.2s;
+  overflow:auto;
 }
+.menu.open { transform:translateX(0); }
 
-button {
-  padding: 8px;
-  cursor: pointer;
-}
+.menu-item { padding:6px; border-bottom:1px solid #555; cursor:pointer; }
 
-.error {
-  color: red;
-  padding: 10px;
-}
+input { width:100%; margin-bottom:6px; padding:6px; }
 </style>
 </head>
 
 <body>
 
-<div class="row topbar">
-  <div>Hanzi Trainer</div>
-  <label>
-    Outline
-    <input type="checkbox" id="toggleOutline" checked>
-  </label>
+<div class="topbar">
+  <button onclick="toggleMenu()">☰</button>
+  <button onclick="goHome()">Home</button>
+  <button onclick="toggleSetting('grid')">Grid</button>
+  <button onclick="toggleSetting('outline')">Contour</button>
+  <button onclick="toggleSetting('hint')">Hint</button>
 </div>
 
+<div id="menu" class="menu"></div>
 <div id="app"></div>
 
 <script>
-// ---------- UTF-8 SAFE BASE64 ----------
-function encodeBase64Unicode(str) {
-  const bytes = new TextEncoder().encode(str);
-  let binary = '';
-  bytes.forEach(b => binary += String.fromCharCode(b));
-  return btoa(binary);
+// ---------- UTF8 BASE64 ----------
+function encode64(str){
+  return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
+}
+function decode64(str){
+  return new TextDecoder().decode(
+    Uint8Array.from(atob(str), c=>c.charCodeAt(0))
+  );
 }
 
-function decodeBase64Unicode(base64) {
-  const binary = atob(base64);
-  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+// ---------- STATE ----------
+let data=null, writer=null;
+let active=0;
+let progress=[];
+let totalMistakes=[];
+let settings = JSON.parse(localStorage.getItem("settings")||"{}");
+
+// ---------- UTIL ----------
+function now(){
+  return new Date().toLocaleTimeString();
+}
+function log(msg){
+  const el=document.getElementById('log');
+  if(!el) return;
+  el.innerHTML += `[${now()}] ${msg}<br>`;
+  el.scrollTop = el.scrollHeight;
 }
 
-// ---------- helpers ----------
-function safeSplitChars(str) {
-  // if user typed "汉字" → split into ["汉","字"]
-  if (str.includes(" ")) return str.split(/\s+/);
-  return Array.from(str);
-}
+// ---------- PARSE ----------
+function parse(){
+  if(!location.hash) return null;
+  try{
+    const d = JSON.parse(decode64(location.hash.slice(1)));
 
-function normalisePayload(payload) {
-  payload.answer = payload.answer.flatMap(safeSplitChars);
+    d.answer = Array.from(d.answer.replace(/\s+/g,''));
+    while((d.pinyin||[]).length < d.answer.length) d.pinyin.push("");
 
-  if (!payload.pinyin) payload.pinyin = [];
-
-  while (payload.pinyin.length < payload.answer.length) {
-    payload.pinyin.push('');
-  }
-
-  return payload;
-}
-
-// ---------- core ----------
-let writer, data, activeIndex = 0, progress = [];
-
-function parseHash() {
-  if (!location.hash) return null;
-
-  try {
-    const decoded = decodeBase64Unicode(location.hash.slice(1));
-    return normalisePayload(JSON.parse(decoded));
-  } catch (e) {
+    return d;
+  }catch(e){
     console.error(e);
-    showError("Failed to parse payload. Invalid link?");
     return null;
   }
 }
 
-function showError(msg) {
-  document.getElementById('app').innerHTML =
-    `<div class="error">${msg}</div>`;
+// ---------- BUILDER ----------
+function renderBuilder(){
+  app.innerHTML = `
+  <div class="row">
+    <h3>Create Exercise</h3>
+    <input id="q" placeholder="Question">
+    <input id="a" placeholder="Answer e.g. 你好">
+    <input id="p" placeholder="Pinyin e.g. nǐ hǎo">
+    <input id="h" placeholder="Hint (optional)">
+    <button onclick="build()">Generate & Start</button>
+  </div>`;
 }
 
-// ---------- builder ----------
-function renderBuilder() {
-  document.getElementById('app').innerHTML = `
-    <div class="row">
-      <h3>Create Exercise</h3>
+function build(){
+  const payload={
+    question:q.value.trim(),
+    answer:a.value.trim(),
+    pinyin:p.value.trim()?p.value.trim().split(/\s+/):[],
+    hint:h.value.trim()
+  };
+  location.href = location.pathname + "#" + encode64(JSON.stringify(payload));
+}
 
-      <label>Question</label>
-      <input id="q" placeholder="Translate: code">
-
-      <label>Answer</label>
-      <input id="a" placeholder="代 码 OR 代码">
-
-      <label>Pinyin (optional)</label>
-      <input id="p" placeholder="dai4 ma3">
-
-      <button onclick="build()">Generate & Start</button>
-    </div>
+// ---------- TRAINER ----------
+function renderTrainer(){
+  app.innerHTML = `
+  <div class="row">${data.question}</div>
+  <div id="hintRow" class="row" style="display:${settings.hint?'block':'none'}">
+    💡 ${data.hint||''}
+  </div>
+  <div id="boxes" class="row boxes"></div>
+  <div id="canvas"></div>
+  <div class="row"><button onclick="copyLog()">Copy Log</button></div>
+  <div id="log" class="log"></div>
   `;
+
+  progress = new Array(data.answer.length).fill(null);
+  totalMistakes = new Array(data.answer.length).fill(0);
+
+  renderBoxes();
+  setTimeout(()=>loadChar(0),50);
+
+  saveHistory();
+  renderMenu();
+
+  log(`📚 Loaded: "${data.question}" — ${data.answer.length} character(s)`);
 }
 
-function build() {
-  const q = document.getElementById('q').value.trim();
-  const a = document.getElementById('a').value.trim();
-  const p = document.getElementById('p').value.trim();
+function renderBoxes(){
+  const b=document.getElementById('boxes');
+  b.innerHTML='';
 
-  if (!q || !a) {
-    alert("Missing required fields");
-    return;
-  }
+  data.answer.forEach((ch,i)=>{
+    const d=document.createElement('div');
+    d.className="char-box";
+    if(i===active) d.classList.add("active");
+    if(progress[i]==='done') d.classList.add("done");
 
-  const payload = normalisePayload({
-    question: q,
-    answer: [a],
-    pinyin: p ? p.split(/\s+/) : []
+    d.innerHTML = `
+      <div>${progress[i]==='done'?ch:'?'}</div>
+      <div style="font-size:10px">${data.pinyin[i]}</div>
+    `;
+    d.onclick=()=>loadChar(i);
+    b.appendChild(d);
   });
-
-  const encoded = encodeBase64Unicode(JSON.stringify(payload));
-
-  location.href = location.pathname + "#" + encoded;
 }
 
-// ---------- trainer ----------
-function initWriter(char) {
-  const canvas = document.getElementById('canvas');
-  canvas.innerHTML = '';
+function loadChar(i){
+  active=i;
 
-  const size = canvas.offsetWidth;
+  const canvas=document.getElementById('canvas');
+  canvas.innerHTML='';
 
-  writer = HanziWriter.create('canvas', char, {
-    width: size,
-    height: size,
-    showCharacter: document.getElementById('toggleOutline').checked,
-    padding: 5
+  const size=canvas.offsetWidth;
+
+  writer = HanziWriter.create('canvas', data.answer[i], {
+    width:size,
+    height:size,
+    showCharacter: !!settings.outline,
+    showOutline: !!settings.outline,
+    padding:5
   });
 
   writer.quiz({
-    onMistake: (s) => {
-      progress[activeIndex] = "in-progress";
-      updateBoxes();
+    onMistake:(s)=>{
+      totalMistakes[i]++;
+      progress[i]='in-progress';
+      renderBoxes();
+      log(`❌ [${data.answer[i]}] stroke ${s.strokeNum} mistake (total: ${totalMistakes[i]})`);
     },
-    onComplete: () => {
-      progress[activeIndex] = "done";
-      updateBoxes();
+    onCorrectStroke:(s)=>{
+      log(`✅ [${data.answer[i]}] stroke ${s.strokeNum} correct!`);
+    },
+    onComplete:()=>{
+      progress[i]='done';
+      renderBoxes();
+      log(`🎉 [${data.answer[i]}] COMPLETED! Total mistakes: ${totalMistakes[i]}`);
+
+      if(i+1 < data.answer.length){
+        loadChar(i+1);
+      }
     }
   });
+
+  renderBoxes();
 }
 
-function loadChar(i) {
-  activeIndex = i;
-  initWriter(data.answer[i]);
-  updateBoxes();
+// ---------- MENU ----------
+function toggleMenu(){
+  menu.classList.toggle("open");
 }
+function renderMenu(){
+  const h = JSON.parse(localStorage.getItem("history")||"[]");
+  menu.innerHTML = "<h4>History</h4>";
 
-function updateBoxes() {
-  document.querySelectorAll('.char-box').forEach((el, i) => {
-    el.classList.remove("active","done","in-progress");
-    if (i === activeIndex) el.classList.add("active");
-    if (progress[i]) el.classList.add(progress[i]);
+  h.forEach(item=>{
+    const d=document.createElement('div');
+    d.className="menu-item";
+    d.innerText=item.question;
+    d.onclick=()=>{
+      location.hash = encode64(JSON.stringify(item));
+      location.reload();
+    };
+    menu.appendChild(d);
   });
 }
-
-function renderTrainer() {
-  document.getElementById('app').innerHTML = `
-    <div class="row">${data.question}</div>
-    <div class="row boxes" id="boxes"></div>
-    <div class="canvas-container"><div id="canvas"></div></div>
-  `;
-
-  const boxes = document.getElementById('boxes');
-
-  data.answer.forEach((char, i) => {
-    const div = document.createElement('div');
-    div.className = "char-box";
-    div.innerHTML = `
-      <div>${char}</div>
-      <div style="font-size:10px">${data.pinyin[i]}</div>
-    `;
-    div.onclick = () => loadChar(i);
-    boxes.appendChild(div);
-  });
-
-  progress = new Array(data.answer.length).fill(null);
-
-  // important: delay init so layout is ready
-  setTimeout(() => loadChar(0), 50);
+function saveHistory(){
+  let h=JSON.parse(localStorage.getItem("history")||"[]");
+  h.unshift(data);
+  localStorage.setItem("history",JSON.stringify(h.slice(0,20)));
 }
 
-// ---------- boot ----------
-window.onload = () => {
-  const parsed = parseHash();
+// ---------- SETTINGS ----------
+function toggleSetting(k){
+  settings[k]=!settings[k];
+  localStorage.setItem("settings",JSON.stringify(settings));
+  log(`${k} ${settings[k]?'enabled':'disabled'}`);
+  location.reload();
+}
 
-  if (!parsed) {
-    renderBuilder();
-  } else {
-    data = parsed;
-    renderTrainer();
-  }
-};
+// ---------- NAV ----------
+function goHome(){
+  location.href = location.pathname;
+}
+
+// ---------- LOG ----------
+function copyLog(){
+  navigator.clipboard.writeText(log.innerText);
+}
+
+// ---------- BOOT ----------
+const app=document.getElementById('app');
+const menu=document.getElementById('menu');
+
+data = parse();
+
+if(!data){
+  renderBuilder();
+}else{
+  renderTrainer();
+}
 </script>
 
 </body>

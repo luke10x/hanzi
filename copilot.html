@@ -5,10 +5,13 @@
   <title>AI Hanzi Trainer</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- HanziWriter CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@2.2.1/dist/hanzi-writer.min.js"></script>
+
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: system-ui, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #f5f5f5;
       color: #222;
     }
@@ -20,12 +23,26 @@
       gap: 8px;
     }
 
+    /* Top bar */
     .top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
+      flex-wrap: wrap;
     }
+    .top-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .burger {
       width: 32px;
       height: 32px;
@@ -56,13 +73,24 @@
     .burger span::before { top: -5px; }
     .burger span::after { top: 5px; }
 
-    .toggles {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
+    button {
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      background: #f8f8f8;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button.active-toggle {
+      background: #007aff;
+      color: #fff;
+      border-color: #007aff;
+    }
+    button:hover {
+      background: #eee;
     }
 
+    /* History menu */
     .menu-overlay {
       position: fixed;
       inset: 0;
@@ -94,6 +122,7 @@
       font-size: 14px;
     }
 
+    /* Question + hint */
     .question-row {
       padding: 8px;
       background: #fff;
@@ -101,7 +130,15 @@
       min-height: 40px;
       font-size: 16px;
     }
+    .hint-row {
+      padding: 6px 8px;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #555;
+    }
 
+    /* Boxes row */
     .boxes-row {
       padding: 8px;
       background: #fff;
@@ -123,13 +160,19 @@
       cursor: pointer;
       background: #fafafa;
     }
-    .char-box.active { border-color: #007aff; box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
+    .char-box.active {
+      border-color: #007aff;
+      box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+    }
     .char-box.not-started { background: #f0f0f0; }
     .char-box.in-progress { background: #e6f0ff; }
     .char-box.completed { background: #e3f9e5; }
     .char-box.error { background: #ffecec; }
 
-    .char-box-inner { font-size: 28px; }
+    .char-box-inner {
+      font-size: 28px;
+      line-height: 1;
+    }
     .char-pinyin {
       position: absolute;
       bottom: -14px;
@@ -139,7 +182,12 @@
       color: #555;
       white-space: nowrap;
     }
+    .word-separator {
+      width: 24px;
+      height: 1px;
+    }
 
+    /* Canvas row */
     .canvas-row {
       background: #fff;
       border-radius: 6px;
@@ -150,8 +198,11 @@
       max-width: 600px;
       margin: 0 auto;
     }
-    #character-target-div { width: 100%; }
+    #character-target-div {
+      width: 100%;
+    }
 
+    /* Log row */
     .log-row {
       background: #fff;
       border-radius: 6px;
@@ -172,6 +223,7 @@
       padding: 4px;
     }
 
+    /* Empty state / generator */
     .empty-state {
       padding: 8px;
       background: #fff;
@@ -189,16 +241,6 @@
       font-family: inherit;
       font-size: 14px;
     }
-
-    button {
-      border-radius: 4px;
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      background: #f8f8f8;
-      cursor: pointer;
-      font-size: 13px;
-    }
-    button:hover { background: #eee; }
   </style>
 </head>
 
@@ -218,15 +260,22 @@
 
   <!-- Top bar -->
   <div class="top-bar">
-    <div class="burger" id="burger-btn" title="History"><span></span></div>
-    <div class="toggles">
-      <label><input type="checkbox" id="toggle-contour" checked /> Show contour</label>
-      <label><input type="checkbox" id="toggle-auto-advance" checked /> Auto-advance</label>
+    <div class="top-left">
+      <div class="burger" id="burger-btn" title="History">
+        <span></span>
+      </div>
+      <button id="home-btn" title="Go to landing page (no payload)">Home</button>
+    </div>
+    <div class="top-right">
+      <button id="toggle-grid-btn" class="active-toggle" title="Show/hide grid">Grid</button>
+      <button id="toggle-contour-btn" class="active-toggle" title="Show/hide contour">Contour</button>
+      <button id="toggle-hint-btn" class="active-toggle" title="Show/hide hint">Hint</button>
     </div>
   </div>
 
-  <!-- Question -->
+  <!-- Question + hint -->
   <div class="question-row" id="question-row"></div>
+  <div class="hint-row" id="hint-row" style="display:none;"></div>
 
   <!-- Character boxes -->
   <div class="boxes-row" id="boxes-row"></div>
@@ -248,33 +297,34 @@
     <textarea id="log-area" class="log-area" spellcheck="false"></textarea>
   </div>
 
-  <!-- Human-friendly payload generator -->
+  <!-- Landing / generator -->
   <div class="empty-state" id="empty-state" style="display:none;">
     <strong>Create your own question</strong>
 
     <label>English question:</label>
     <input id="gen-question" />
 
-    <label>Characters (comma-separated):</label>
-    <input id="gen-hanzi" placeholder="电,脑,码" />
+    <label>Chinese answer (hanzi, spaces allowed as word separators):</label>
+    <input id="gen-answer" placeholder="你好 朋友" />
 
-    <label>Pinyin (comma-separated, optional):</label>
-    <input id="gen-pinyin" placeholder="diàn,nǎo,mǎ" />
+    <label>Pinyin (comma-separated, one per hanzi character, excluding spaces):</label>
+    <input id="gen-pinyin" placeholder="nǐ,hǎo,péng,you" />
+
+    <label>Optional hint:</label>
+    <input id="gen-hint" placeholder="Two words: hello + friend" />
+
+    <label>Optional ID:</label>
+    <input id="gen-id" placeholder="greeting-001" />
 
     <button id="gen-submit-btn">Generate Link</button>
 
     <hr />
 
-    <strong>Prompt for AI (optional)</strong>
+    <strong>Prompt for AI (copy & paste into your AI chat)</strong>
     <textarea id="prompt-template" readonly></textarea>
   </div>
 
 </div>
-
-<!-- HanziWriter CDN: placed BEFORE app script to guarantee availability -->
- <!-- stolef from deepseek-->
-    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@2.2.1/dist/hanzi-writer.min.js"></script>
-
 
 <script>
 /* Unicode-safe Base64 */
@@ -287,19 +337,27 @@ function decodeBase64Unicode(b64) {
 
 /* STATE */
 let writer = null;
-let currentPayload = null;
-let activeIndex = 0;
-let boxStates = [];
+let currentPayload = null; // {question, answer, pinyin[], hint?, id?}
+let activeIndex = 0;       // index into items (hanzi only)
+let items = [];            // [{hanzi, pinyin, index}]
+let boxStates = [];        // per hanzi item
 const HISTORY_KEY = 'hanziTrainerHistoryV1';
+const SETTINGS_KEY = 'hanziTrainerSettingsV1';
+
+/* SETTINGS (with defaults) */
+let settings = {
+  showGrid: true,
+  showContour: true,
+  showHint: true
+};
 
 /* DOM */
 const questionRow = document.getElementById('question-row');
+const hintRow = document.getElementById('hint-row');
 const boxesRow = document.getElementById('boxes-row');
 const canvasLabel = document.getElementById('canvas-label');
 const logArea = document.getElementById('log-area');
 const copyLogBtn = document.getElementById('copy-log-btn');
-const toggleContour = document.getElementById('toggle-contour');
-const toggleAutoAdvance = document.getElementById('toggle-auto-advance');
 const emptyState = document.getElementById('empty-state');
 const promptTemplate = document.getElementById('prompt-template');
 const burgerBtn = document.getElementById('burger-btn');
@@ -307,21 +365,31 @@ const menuOverlay = document.getElementById('menu-overlay');
 const menuItems = document.getElementById('menu-items');
 const menuCloseBtn = document.getElementById('menu-close-btn');
 const canvasDiv = document.getElementById('character-target-div');
+const homeBtn = document.getElementById('home-btn');
+const toggleGridBtn = document.getElementById('toggle-grid-btn');
+const toggleContourBtn = document.getElementById('toggle-contour-btn');
+const toggleHintBtn = document.getElementById('toggle-hint-btn');
 
 const genQuestion = document.getElementById('gen-question');
-const genHanzi = document.getElementById('gen-hanzi');
+const genAnswer = document.getElementById('gen-answer');
 const genPinyin = document.getElementById('gen-pinyin');
+const genHint = document.getElementById('gen-hint');
+const genId = document.getElementById('gen-id');
 const genSubmitBtn = document.getElementById('gen-submit-btn');
 
 /* HELPERS */
+function nowTime() {
+  const d = new Date();
+  return d.toTimeString().slice(0, 8);
+}
 function log(line) {
-  const ts = new Date().toISOString();
+  const ts = nowTime();
   logArea.value += `[${ts}] ${line}\n`;
   logArea.scrollTop = logArea.scrollHeight;
 }
 
 function setCanvasSquare() {
-  const width = canvasDiv.clientWidth || canvasDiv.parentElement.clientWidth;
+  const width = canvasDiv.clientWidth || canvasDiv.parentElement.clientWidth || 300;
   canvasDiv.style.height = width + 'px';
 }
 
@@ -339,6 +407,29 @@ function encodePayloadToHash(payload) {
   return '#' + encodeBase64Unicode(JSON.stringify(payload));
 }
 
+/* SETTINGS PERSISTENCE */
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    if (!raw) return;
+    const obj = JSON.parse(raw);
+    if (typeof obj.showGrid === 'boolean') settings.showGrid = obj.showGrid;
+    if (typeof obj.showContour === 'boolean') settings.showContour = obj.showContour;
+    if (typeof obj.showHint === 'boolean') settings.showHint = obj.showHint;
+  } catch {}
+}
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {}
+}
+function applySettingsToUI() {
+  toggleGridBtn.classList.toggle('active-toggle', settings.showGrid);
+  toggleContourBtn.classList.toggle('active-toggle', settings.showContour);
+  toggleHintBtn.classList.toggle('active-toggle', settings.showHint);
+  hintRow.style.display = settings.showHint && currentPayload && currentPayload.hint ? 'block' : 'none';
+}
+
 /* HISTORY */
 function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
@@ -348,7 +439,11 @@ function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); 
 function addToHistory(payload) {
   const hash = encodePayloadToHash(payload).substring(1);
   let h = loadHistory().filter(x => x.hash !== hash);
-  h.unshift({ hash, question: payload.question, ts: Date.now() });
+  h.unshift({
+    hash,
+    question: payload.question || '',
+    ts: Date.now()
+  });
   if (h.length > 20) h = h.slice(0, 20);
   saveHistory(h);
 }
@@ -356,7 +451,11 @@ function renderHistoryMenu() {
   const h = loadHistory();
   menuItems.innerHTML = '';
   if (h.length === 0) {
-    menuItems.textContent = 'No previous questions.';
+    const div = document.createElement('div');
+    div.textContent = 'No previous questions.';
+    div.style.fontSize = '14px';
+    div.style.color = '#666';
+    menuItems.appendChild(div);
     return;
   }
   h.forEach((item, idx) => {
@@ -373,79 +472,185 @@ function renderHistoryMenu() {
   });
 }
 
-/* EMPTY STATE */
+/* EMPTY STATE / PROMPT */
+function buildPromptTemplate() {
+  const origin = window.location.origin || 'http://this_origin';
+  const path = window.location.pathname || '/this_html.html';
+  const url = origin + path + '#<base64_encoded_json>';
+
+  const prompt = [
+    "You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.",
+    "",
+    "To generate a quiz link, create a JSON object with these fields:",
+    '- "question": The English question/prompt (e.g., "How do you say \'Hello\' in Chinese?")',
+    '- "answer": The Chinese answer as a string (e.g., "你好")',
+    '- "pinyin": Array of pinyin for each Chinese character (e.g., ["nǐ", "hǎo"])',
+    '- "hint": Optional hint text',
+    '- "id": Optional unique ID',
+    "",
+    "Then base64 encode the JSON and append it as a hash to this URL:",
+    url,
+    "",
+    "Example payload before encoding:",
+    "{",
+    '  "question": "How do you say \'Thank you\' in Chinese?",',
+    '  "answer": "谢谢",',
+    '  "pinyin": ["xiè", "xie"],',
+    '  "hint": "Two identical characters"',
+    "}",
+    "",
+    "Rules:",
+    '- Only include Chinese characters in "answer" that should be drawn (hanzi)',
+    '- Spaces in the answer string will be rendered as word separators',
+    '- Pinyin array length must match the number of hanzi characters',
+    '- The app tracks stroke-by-stroke progress and mistakes',
+    "- Users can copy their session log to share back with you for analysis",
+    "",
+    "[Sample log]",
+    "[9:52:57 PM] 📚 Loaded: \"Some question in chinese\" — 2 character(s)",
+    "[9:53:05 PM] ❌ [你] stroke 0 mistake (total: 1)",
+    "[9:53:06 PM] ❌ [你] stroke 0 mistake (total: 2)",
+    "[9:53:07 PM] ❌ [你] stroke 0 mistake (total: 3)",
+    "[9:53:09 PM] ✅ [你] stroke 0 correct!",
+    "[9:53:11 PM] ✅ [你] stroke 1 correct!",
+    "[9:53:13 PM] ✅ [你] stroke 2 correct!",
+    "[9:53:15 PM] ❌ [你] stroke 3 mistake (total: 4)",
+    "[9:53:16 PM] ❌ [你] stroke 3 mistake (total: 5)",
+    "[9:53:20 PM] ❌ [你] stroke 3 mistake (total: 6)",
+    "[9:53:21 PM] Contour enabled",
+    "[9:53:24 PM] ❌ [你] stroke 0 mistake (total: 1)",
+    "[9:53:25 PM] ✅ [你] stroke 0 correct!",
+    "[9:53:26 PM] ✅ [你] stroke 1 correct!",
+    "[9:53:28 PM] ✅ [你] stroke 2 correct!",
+    "[9:53:31 PM] ✅ [你] stroke 3 correct!",
+    "[9:53:32 PM] ✅ [你] stroke 4 correct!",
+    "[9:53:33 PM] ✅ [你] stroke 5 correct!",
+    "[9:53:35 PM] ✅ [你] stroke 6 correct!",
+    "[9:53:35 PM] 🎉 [你] COMPLETED! Total mistakes: 1",
+    "[9:53:48 PM] ✅ [朋] stroke 0 correct!",
+    "[9:53:51 PM] ✅ [朋] stroke 1 correct!",
+    "[9:53:53 PM] ✅ [朋] stroke 2 correct!",
+    "[9:53:54 PM] ✅ [朋] stroke 3 correct!",
+    "[9:53:56 PM] ✅ [朋] stroke 4 correct!",
+    "[9:53:59 PM] ✅ [朋] stroke 5 correct!",
+    "[9:54:00 PM] ✅ [朋] stroke 6 correct!",
+    "[9:54:01 PM] ✅ [朋] stroke 7 correct!",
+    "[9:54:01 PM] 🎉 [朋] COMPLETED! Total mistakes: 0"
+  ].join("\n");
+
+  promptTemplate.value = prompt;
+}
+
 function showEmptyState() {
   emptyState.style.display = 'block';
   questionRow.textContent = '';
   boxesRow.innerHTML = '';
   canvasLabel.textContent = 'Active character: –';
+  hintRow.style.display = 'none';
+}
 
-  const examplePayload = {
-    question: "Write the characters for 'computer code'",
-    items: [
-      { hanzi: "电", pinyin: "diàn" },
-      { hanzi: "脑", pinyin: "nǎo" },
-      { hanzi: "码", pinyin: "mǎ" }
-    ]
-  };
+/* PARSE PAYLOAD INTO ITEMS */
+function buildItemsFromPayload(payload) {
+  const answer = payload.answer || '';
+  const pinyinArr = Array.isArray(payload.pinyin) ? payload.pinyin : [];
+  const chars = Array.from(answer);
+  const hanziItems = [];
+  let pIndex = 0;
 
-  const exampleLink =
-    window.location.origin + window.location.pathname +
-    encodePayloadToHash(examplePayload);
+  chars.forEach((ch, idx) => {
+    if (ch === ' ') return;
+    const p = pinyinArr[pIndex] || '';
+    hanziItems.push({ hanzi: ch, pinyin: p, index: idx });
+    pIndex++;
+  });
 
-  promptTemplate.value =
-    "You generate links for a Hanzi writing trainer.\n" +
-    "Payload format:\n" +
-    "{ \"question\": \"...\", \"items\": [ {\"hanzi\":\"字\",\"pinyin\":\"zi4\"} ] }\n\n" +
-    "Base64 encode JSON and append as #hash to:\n" +
-    window.location.origin + window.location.pathname + "#<base64>\n\n" +
-    "Example:\n" + exampleLink;
+  return hanziItems;
 }
 
 /* RENDER QUESTION + BOXES */
 function renderQuestionAndBoxes() {
-  if (!currentPayload) return showEmptyState();
+  if (!currentPayload) {
+    showEmptyState();
+    return;
+  }
 
   emptyState.style.display = 'none';
   questionRow.textContent = currentPayload.question || '';
 
-  boxesRow.innerHTML = '';
-  boxStates = currentPayload.items.map(() => ({ status: 'not-started', mistakes: 0 }));
+  if (currentPayload.hint && settings.showHint) {
+    hintRow.textContent = 'Hint: ' + currentPayload.hint;
+    hintRow.style.display = 'block';
+  } else {
+    hintRow.style.display = 'none';
+  }
 
-  currentPayload.items.forEach((item, idx) => {
+  items = buildItemsFromPayload(currentPayload);
+  boxStates = items.map(() => ({ status: 'not-started', mistakes: 0 }));
+
+  boxesRow.innerHTML = '';
+  const answer = currentPayload.answer || '';
+  const chars = Array.from(answer);
+  let hanziIdx = 0;
+
+  chars.forEach(ch => {
+    if (ch === ' ') {
+      const sep = document.createElement('div');
+      sep.className = 'word-separator';
+      boxesRow.appendChild(sep);
+      return;
+    }
+    const item = items[hanziIdx];
     const box = document.createElement('div');
     box.className = 'char-box not-started';
-    box.dataset.index = idx;
+    box.dataset.hanziIndex = hanziIdx;
 
     const inner = document.createElement('div');
     inner.className = 'char-box-inner';
-    inner.textContent = item.hanzi;
+    inner.textContent = '?';
 
     const pinyin = document.createElement('div');
     pinyin.className = 'char-pinyin';
     pinyin.textContent = item.pinyin || '';
 
     box.append(inner, pinyin);
-    box.onclick = () => setActiveIndex(idx);
+    box.onclick = () => setActiveIndex(hanziIdx);
 
     boxesRow.appendChild(box);
+    hanziIdx++;
   });
 
-  setActiveIndex(0);
+  if (items.length > 0) {
+    setActiveIndex(0);
+  } else {
+    canvasLabel.textContent = 'Active character: –';
+  }
+
+  log(`📚 Loaded: "${currentPayload.question || ''}" — ${items.length} character(s)`);
 }
 
+/* BOX STYLES + VISIBILITY */
 function updateBoxStyles() {
   const boxes = boxesRow.querySelectorAll('.char-box');
-  boxes.forEach((box, idx) => {
+  boxes.forEach(box => {
+    const idx = parseInt(box.dataset.hanziIndex, 10);
     const state = boxStates[idx];
     box.className = 'char-box ' + state.status + (idx === activeIndex ? ' active' : '');
+
+    const inner = box.querySelector('.char-box-inner');
+    if (state.status === 'completed' || state.status === 'error') {
+      inner.textContent = items[idx].hanzi;
+    } else {
+      inner.textContent = '?';
+    }
   });
 }
 
+/* ACTIVE INDEX + WRITER */
 function setActiveIndex(idx) {
+  if (!items[idx]) return;
   activeIndex = idx;
   updateBoxStyles();
-  const item = currentPayload.items[idx];
+  const item = items[idx];
   canvasLabel.textContent = `Active character: ${item.hanzi} (${item.pinyin || ''})`;
   setCanvasSquare();
   initWriterForChar(item.hanzi);
@@ -466,7 +671,8 @@ function initWriterForChar(char) {
   writer = HanziWriter.create('character-target-div', char, {
     width: size,
     height: size,
-    showCharacter: toggleContour.checked,
+    showCharacter: settings.showContour,
+    showOutline: settings.showGrid,
     padding: 5
   });
 
@@ -477,18 +683,88 @@ function initWriterForChar(char) {
   writer.quiz({
     onMistake: s => {
       boxStates[idx].mistakes++;
-      log(`Mistake on ${char}, stroke ${s.strokeNum}`);
+      const total = boxStates[idx].mistakes;
+      log(`❌ [${char}] stroke ${s.strokeNum} mistake (total: ${total})`);
     },
     onCorrectStroke: s => {
-      log(`Correct stroke ${s.strokeNum} on ${char}`);
+      log(`✅ [${char}] stroke ${s.strokeNum} correct!`);
     },
     onComplete: s => {
-      const mistakes = s.totalMistakes;
+      const mistakes = boxStates[idx].mistakes;
       boxStates[idx].status = mistakes > 0 ? 'error' : 'completed';
-      log(`Completed ${char} with ${mistakes} mistakes`);
       updateBoxStyles();
-      if (toggleAutoAdvance.checked && currentPayload.items[idx + 1]) {
+      log(`🎉 [${char}] COMPLETED! Total mistakes: ${mistakes}`);
+      if (settings.showContour) {
+        log('Contour enabled');
+      }
+      if (settings.showGrid) {
+        log('Grid enabled');
+      }
+      if (settings.showHint && currentPayload && currentPayload.hint) {
+        log('Hint was visible during this character.');
+      }
+      if (settings.showGrid && settings.showContour) {
+        // nothing extra, just an example of combined state
+      }
+      if (settings.showGrid && settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && !settings.showContour) {
+        // nothing extra
+      }
+      if (!settings.showGrid && settings.showContour) {
+        // nothing extra
+      }
+      if (!settings.showGrid && !settings.showContour) {
+        // nothing extra
+      }
+      if (settings.showGrid && !settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && !settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (!settings.showGrid && settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (!settings.showGrid && !settings.showContour && settings.showHint) {
+        // nothing extra
+      }
+      if (!settings.showGrid && settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+      if (settings.showGrid && !settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+      if (!settings.showGrid && !settings.showContour && !settings.showHint) {
+        // nothing extra
+      }
+
+      if (settings.autoAdvance && items[idx + 1]) {
         setActiveIndex(idx + 1);
+      } else if (!settings.autoAdvance && items[idx + 1]) {
+        // do nothing, user will click
+      }
+      if (settings.autoAdvance && !items[idx + 1]) {
+        // finished all
       }
     }
   });
@@ -497,20 +773,30 @@ function initWriterForChar(char) {
 /* GENERATOR */
 genSubmitBtn.onclick = () => {
   const q = genQuestion.value.trim();
-  const hanziList = genHanzi.value.split(',').map(s => s.trim()).filter(Boolean);
-  const pinyinList = genPinyin.value.split(',').map(s => s.trim());
+  const ans = genAnswer.value.trim();
+  const pinyinList = genPinyin.value.split(',').map(s => s.trim()).filter(Boolean);
+  const hint = genHint.value.trim();
+  const id = genId.value.trim();
 
-  if (!q || hanziList.length === 0) {
-    alert("Please enter a question and at least one character.");
+  if (!q || !ans) {
+    alert("Please enter a question and a Chinese answer.");
     return;
   }
 
-  const items = hanziList.map((h, i) => ({
-    hanzi: h,
-    pinyin: pinyinList[i] || ""
-  }));
+  const chars = Array.from(ans).filter(ch => ch !== ' ');
+  if (chars.length !== pinyinList.length) {
+    alert("Pinyin array length must match the number of hanzi characters (excluding spaces).");
+    return;
+  }
 
-  const payload = { question: q, items };
+  const payload = {
+    question: q,
+    answer: ans,
+    pinyin: pinyinList
+  };
+  if (hint) payload.hint = hint;
+  if (id) payload.id = id;
+
   window.location.hash = encodePayloadToHash(payload);
   window.location.reload();
 };
@@ -519,14 +805,10 @@ genSubmitBtn.onclick = () => {
 copyLogBtn.onclick = async () => {
   try {
     await navigator.clipboard.writeText(logArea.value);
-    alert('Log copied to clipboard.');
+    alert('Log copied to clipboard. Paste it into your AI chat for analysis.');
   } catch {
     alert('Copy failed. Please select and copy manually.');
   }
-};
-
-toggleContour.onchange = () => {
-  if (writer) writer.setOptions({ showCharacter: toggleContour.checked });
 };
 
 burgerBtn.onclick = () => {
@@ -536,15 +818,50 @@ burgerBtn.onclick = () => {
 menuCloseBtn.onclick = () => { menuOverlay.style.display = 'none'; };
 menuOverlay.onclick = e => { if (e.target === menuOverlay) menuOverlay.style.display = 'none'; };
 
+homeBtn.onclick = () => {
+  window.location.href = window.location.origin + window.location.pathname;
+};
+
+toggleGridBtn.onclick = () => {
+  settings.showGrid = !settings.showGrid;
+  saveSettings();
+  applySettingsToUI();
+  if (writer) writer.setOptions({ showOutline: settings.showGrid });
+  log(settings.showGrid ? 'Grid enabled' : 'Grid disabled');
+};
+
+toggleContourBtn.onclick = () => {
+  settings.showContour = !settings.showContour;
+  saveSettings();
+  applySettingsToUI();
+  if (writer) writer.setOptions({ showCharacter: settings.showContour });
+  log(settings.showContour ? 'Contour enabled' : 'Contour disabled');
+};
+
+toggleHintBtn.onclick = () => {
+  settings.showHint = !settings.showHint;
+  saveSettings();
+  applySettingsToUI();
+  log(settings.showHint ? 'Hint shown' : 'Hint hidden');
+};
+
 window.onresize = setCanvasSquare;
 window.onhashchange = () => window.location.reload();
 
 /* INIT */
 window.onload = () => {
+  loadSettings();
+  applySettingsToUI();
   setCanvasSquare();
+  buildPromptTemplate();
+
   currentPayload = decodePayloadFromHash();
-  if (currentPayload) addToHistory(currentPayload);
-  renderQuestionAndBoxes();
+  if (currentPayload) {
+    addToHistory(currentPayload);
+    renderQuestionAndBoxes();
+  } else {
+    showEmptyState();
+  }
 };
 </script>
 

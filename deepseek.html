@@ -9,6 +9,7 @@
     <style>
         * {
             box-sizing: border-box;
+            user-select: none;
         }
 
         body {
@@ -54,22 +55,25 @@
         }
         .burger-menu:hover { background: #f1f5f9; }
         
-        .mode-toggles {
+        .control-group {
             display: flex;
-            gap: 12px;
+            gap: 8px;
+            flex-wrap: wrap;
             align-items: center;
         }
         
-        .toggle-btn {
+        .ctrl-btn {
             background: #eef2ff;
             border: none;
-            padding: 6px 14px;
+            padding: 6px 12px;
             border-radius: 40px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 500;
             cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
         }
-        .toggle-btn.active {
+        .ctrl-btn.active {
             background: #3b82f6;
             color: white;
         }
@@ -81,6 +85,19 @@
             border-radius: 40px;
             padding: 6px 14px;
             cursor: pointer;
+            font-size: 0.75rem;
+        }
+        
+        .landing-link {
+            background: #8b5cf6;
+            color: white;
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
         }
         
         .question-row {
@@ -91,6 +108,19 @@
             font-weight: 600;
             color: #0f172a;
             text-align: center;
+        }
+        
+        .hint-row {
+            padding: 8px 20px;
+            background: #fef9c3;
+            border-bottom: 1px solid #eab308;
+            font-size: 0.85rem;
+            color: #854d0e;
+            text-align: center;
+            display: none;
+        }
+        .hint-row.visible {
+            display: block;
         }
         
         .boxes-container {
@@ -135,6 +165,25 @@
         .char-box.state-none { background: #f1f5f9; border: 1px solid #cbd5e1; }
         .char-box.state-started { background: #fef9c3; border: 1px solid #eab308; }
         .char-box.state-completed { background: #bbf7d0; border: 1px solid #22c55e; }
+        /* Hide character until completed */
+        .char-box.state-none .char-text, .char-box.state-started .char-text {
+            display: none;
+        }
+        .char-box .char-text {
+            font-size: 2rem;
+        }
+        .char-box.state-none::before, .char-box.state-started::before {
+            content: "?";
+            font-size: 2rem;
+            font-weight: bold;
+            color: #94a3b8;
+        }
+        .char-box.state-completed .char-text {
+            display: inline;
+        }
+        .char-box.state-completed::before {
+            display: none;
+        }
         
         .pinyin-label {
             font-size: 0.7rem;
@@ -210,7 +259,7 @@
         }
         
         .menu-panel {
-            width: 280px;
+            width: 300px;
             background: white;
             height: 100%;
             padding: 24px 16px;
@@ -230,11 +279,13 @@
         .history-list li {
             background: #f1f5f9;
             margin-bottom: 8px;
-            padding: 8px 12px;
+            padding: 10px 12px;
             border-radius: 14px;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            word-break: break-word;
         }
         
         .remove-history {
@@ -242,6 +293,7 @@
             border: none;
             color: #ef4444;
             cursor: pointer;
+            font-size: 1.1rem;
         }
         
         .ai-prompt-area {
@@ -263,21 +315,31 @@
         }
         
         button { cursor: pointer; }
-        .close-menu { background: #e2e8f0; border: none; padding: 10px; border-radius: 40px; }
-        .fallback-canvas { width: 100%; height: 100%; background: white; cursor: crosshair; }
+        .close-menu { background: #e2e8f0; border: none; padding: 10px; border-radius: 40px; margin-top: 8px; }
         .error-badge { color: #dc2626; text-align: center; padding: 20px; font-size: 0.8rem; }
+        
+        @media (max-width: 550px) {
+            .ctrl-btn { font-size: 0.7rem; padding: 4px 8px; }
+            .landing-link { font-size: 0.7rem; padding: 4px 8px; }
+        }
     </style>
 </head>
 <body>
 <div class="app" id="appRoot">
     <div class="top-bar">
         <button class="burger-menu" id="burgerBtn"><i class="fas fa-bars"></i></button>
-        <div class="mode-toggles">
-            <button id="toggleContourBtn" class="toggle-btn">✍️ Contour OFF</button>
+        <div class="control-group">
+            <button id="toggleGridBtn" class="ctrl-btn">🔲 Grid OFF</button>
+            <button id="toggleContourBtn" class="ctrl-btn">✍️ Contour OFF</button>
+            <button id="toggleHintBtn" class="ctrl-btn">💡 Hint OFF</button>
         </div>
-        <button id="copyEntireLogBtn" class="copy-log-btn"><i class="far fa-copy"></i> Copy Log</button>
+        <div style="display: flex; gap: 6px;">
+            <a href="#" id="landingLinkBtn" class="landing-link"><i class="fas fa-home"></i> New</a>
+            <button id="copyEntireLogBtn" class="copy-log-btn"><i class="far fa-copy"></i> Copy</button>
+        </div>
     </div>
     <div class="question-row" id="questionText">— Ready —</div>
+    <div class="hint-row" id="hintRow"></div>
     <div class="boxes-container" id="boxesContainer"></div>
     <div class="canvas-area">
         <div class="canvas-wrapper">
@@ -285,34 +347,41 @@
         </div>
     </div>
     <div class="log-section">
-        <div class="log-header"><span>✍️ Practice Log</span></div>
+        <div class="log-header"><span>✍️ Practice Log (copy & share with AI)</span></div>
         <div class="log-content" id="logMessages"></div>
     </div>
 </div>
 
 <script>
-    // State
+    // ---------------------------- STATE ---------------------------------
     let currentPayload = null;
     let boxesData = [];
     let activeBoxIndex = 0;
     let showContour = false;
+    let showGrid = false;
+    let showHint = false;
+    let currentHint = "";
     let historyEntries = [];
     let logEntries = [];
     
     // DOM elements
     const questionEl = document.getElementById('questionText');
+    const hintRow = document.getElementById('hintRow');
     const boxesContainer = document.getElementById('boxesContainer');
     const activeCanvasDiv = document.getElementById('active-canvas-container');
     const logMessagesDiv = document.getElementById('logMessages');
+    const toggleGridBtn = document.getElementById('toggleGridBtn');
     const toggleContourBtn = document.getElementById('toggleContourBtn');
+    const toggleHintBtn = document.getElementById('toggleHintBtn');
     const copyEntireLogBtn = document.getElementById('copyEntireLogBtn');
     const burgerBtn = document.getElementById('burgerBtn');
+    const landingLinkBtn = document.getElementById('landingLinkBtn');
     
-    // Helper: add log message
+    // Helper: add log
     function addLog(msg) {
         const time = new Date().toLocaleTimeString();
         logEntries.push(`[${time}] ${msg}`);
-        if (logEntries.length > 200) logEntries.shift();
+        if (logEntries.length > 500) logEntries.shift();
         renderLog();
     }
     
@@ -336,7 +405,18 @@
     
     // Copy log
     copyEntireLogBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(logEntries.join('\n')).then(() => addLog('📋 Log copied'));
+        navigator.clipboard.writeText(logEntries.join('\n')).then(() => addLog('📋 Log copied to clipboard'));
+    });
+    
+    // Landing page (clear payload)
+    landingLinkBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.location.hash = '';
+        currentPayload = null;
+        boxesData.forEach(b => { if (b.writer) try { b.writer.destroy(); } catch(e) {} });
+        boxesData = [];
+        showEmptyPrompt();
+        addLog('🏠 Cleared session. Go to landing page.');
     });
     
     // Destroy writer
@@ -347,7 +427,7 @@
         }
     }
     
-    // Update box card visual
+    // Update box card visual with "?" until completed
     function updateBoxCardVisual(idx) {
         const card = document.querySelector(`.hanzi-card[data-idx='${idx}']`);
         if (!card) return;
@@ -355,11 +435,13 @@
         const state = boxesData[idx].state;
         charDiv.classList.remove('state-none', 'state-started', 'state-completed');
         charDiv.classList.add(`state-${state}`);
+        
+        // Update active highlight
         document.querySelectorAll('.hanzi-card').forEach(c => c.classList.remove('active-card'));
         card.classList.add('active-card');
     }
     
-    // Render character boxes
+    // Render boxes - characters show as "?" until completed
     function renderBoxes() {
         if (!currentPayload || !boxesData.length) {
             boxesContainer.innerHTML = '<div style="padding:12px">📦 No characters loaded</div>';
@@ -370,8 +452,11 @@
             const card = document.createElement('div');
             card.className = 'hanzi-card';
             card.setAttribute('data-idx', idx);
+            const displayChar = box.character;
             card.innerHTML = `
-                <div class="char-box state-${box.state}">${box.character}</div>
+                <div class="char-box state-${box.state}">
+                    <span class="char-text" style="display: ${box.state === 'completed' ? 'inline' : 'none'}">${displayChar}</span>
+                </div>
                 <div class="pinyin-label">${box.pinyin || ''}</div>
             `;
             card.addEventListener('click', () => {
@@ -386,120 +471,24 @@
         if (activeCard) activeCard.classList.add('active-card');
     }
     
-    // Fallback drawing canvas (simple sketchpad)
-    let fallbackActive = false;
-    let fallbackCtx = null;
-    let drawing = false;
-    let lastX = 0, lastY = 0;
-    
-    function initFallbackCanvas(container, character, onComplete) {
-        container.innerHTML = '';
-        const canvas = document.createElement('canvas');
-        canvas.className = 'fallback-canvas';
-        const size = Math.min(container.clientWidth, container.clientHeight, 400);
-        canvas.width = size;
-        canvas.height = size;
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        container.appendChild(canvas);
-        
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = '#3b82f6';
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        
-        let started = false;
-        
-        function getCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            let clientX, clientY;
-            if (e.touches) {
-                clientX = e.touches[0].clientX;
-                clientY = e.touches[0].clientY;
-            } else {
-                clientX = e.clientX;
-                clientY = e.clientY;
-            }
-            let x = (clientX - rect.left) * scaleX;
-            let y = (clientY - rect.top) * scaleY;
-            x = Math.min(Math.max(0, x), canvas.width);
-            y = Math.min(Math.max(0, y), canvas.height);
-            return { x, y };
-        }
-        
-        function startDraw(e) {
-            e.preventDefault();
-            drawing = true;
-            const { x, y } = getCoords(e);
-            lastX = x;
-            lastY = y;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(x + 0.5, y + 0.5);
-            ctx.stroke();
-            if (!started) {
-                started = true;
-                addLog(`✏️ Started drawing "${character}" (fallback mode)`);
-            }
-        }
-        
-        function draw(e) {
-            if (!drawing) return;
-            e.preventDefault();
-            const { x, y } = getCoords(e);
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(x, y);
-            ctx.stroke();
-            lastX = x;
-            lastY = y;
-        }
-        
-        function endDraw() {
-            drawing = false;
-        }
-        
-        canvas.addEventListener('mousedown', startDraw);
-        canvas.addEventListener('mousemove', draw);
-        canvas.addEventListener('mouseup', endDraw);
-        canvas.addEventListener('touchstart', startDraw);
-        canvas.addEventListener('touchmove', draw);
-        canvas.addEventListener('touchend', endDraw);
-        
-        // Add clear button
-        const clearBtn = document.createElement('button');
-        clearBtn.textContent = 'Clear';
-        clearBtn.style.position = 'absolute';
-        clearBtn.style.bottom = '8px';
-        clearBtn.style.right = '8px';
-        clearBtn.style.background = '#ef4444';
-        clearBtn.style.color = 'white';
-        clearBtn.style.border = 'none';
-        clearBtn.style.borderRadius = '20px';
-        clearBtn.style.padding = '4px 12px';
-        clearBtn.style.fontSize = '0.7rem';
-        clearBtn.style.cursor = 'pointer';
-        clearBtn.style.zIndex = '10';
-        clearBtn.onclick = (e) => {
-            e.stopPropagation();
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#3b82f6';
-            addLog(`🔄 Cleared fallback canvas for "${character}"`);
-        };
-        container.style.position = 'relative';
-        container.appendChild(clearBtn);
-        
-        fallbackActive = true;
-        return canvas;
+    // Apply writer settings (grid, contour)
+    function applyWriterSettings(writer, containerId, character, size) {
+        // Recreate with new settings if needed
+        if (writer) destroyWriter(boxesData[activeBoxIndex]);
+        const newWriter = HanziWriter.create(containerId, character, {
+            width: size,
+            height: size,
+            showCharacter: false,
+            padding: 8,
+            showOutline: showContour,
+            showGrid: showGrid,
+            strokeColor: '#3b82f6',
+            radicalColor: '#cbd5e1'
+        });
+        return newWriter;
     }
     
-    // Load active canvas with proper error handling
+    // Load active canvas
     function loadActiveCanvas() {
         if (!currentPayload || !boxesData.length) return;
         const box = boxesData[activeBoxIndex];
@@ -518,16 +507,6 @@
         const rect = container.parentElement.getBoundingClientRect();
         const size = Math.min(rect.width, rect.height, 400);
         
-        // Try HanziWriter with timeout
-        let timeoutId = setTimeout(() => {
-            if (!box.writer && box.state !== 'completed') {
-                addLog(`⚠️ "${box.character}" - Using fallback drawing mode (stroke data unavailable)`);
-                initFallbackCanvas(activeCanvasDiv, box.character, () => {});
-                if (box.state === 'none') box.state = 'started';
-                updateBoxCardVisual(activeBoxIndex);
-            }
-        }, 2000);
-        
         try {
             const writer = HanziWriter.create(containerId, box.character, {
                 width: size,
@@ -535,12 +514,12 @@
                 showCharacter: false,
                 padding: 8,
                 showOutline: showContour,
+                showGrid: showGrid,
                 strokeColor: '#3b82f6',
                 radicalColor: '#cbd5e1'
             });
             
             box.writer = writer;
-            clearTimeout(timeoutId);
             
             setTimeout(() => {
                 if (box.state === 'completed') {
@@ -552,43 +531,36 @@
                     if (box.state === 'none') box.state = 'started';
                     updateBoxCardVisual(activeBoxIndex);
                     
-                    try {
-                        writer.quiz({
-                            onMistake: (data) => {
-                                addLog(`❌ [${box.character}] stroke ${data.strokeNum} mistake (total: ${data.totalMistakes})`);
-                            },
-                            onCorrectStroke: (data) => {
-                                addLog(`✅ [${box.character}] stroke ${data.strokeNum} correct!`);
-                            },
-                            onComplete: (summary) => {
-                                addLog(`🎉 [${box.character}] COMPLETED! Total mistakes: ${summary.totalMistakes}`);
-                                box.state = 'completed';
-                                updateBoxCardVisual(activeBoxIndex);
-                                if (box.writer) {
-                                    try {
-                                        box.writer.setCharacter(box.character);
-                                        box.writer.animateCharacter();
-                                    } catch(e) {}
-                                }
+                    writer.quiz({
+                        onMistake: (data) => {
+                            addLog(`❌ [${box.character}] stroke ${data.strokeNum} mistake (total: ${data.totalMistakes})`);
+                        },
+                        onCorrectStroke: (data) => {
+                            addLog(`✅ [${box.character}] stroke ${data.strokeNum} correct!`);
+                        },
+                        onComplete: (summary) => {
+                            addLog(`🎉 [${box.character}] COMPLETED! Total mistakes: ${summary.totalMistakes}`);
+                            box.state = 'completed';
+                            updateBoxCardVisual(activeBoxIndex);
+                            renderBoxes(); // Refresh to show character instead of "?"
+                            if (box.writer) {
+                                try {
+                                    box.writer.setCharacter(box.character);
+                                    box.writer.animateCharacter();
+                                } catch(e) {}
                             }
-                        });
-                    } catch(err) {
-                        addLog(`⚠️ Quiz error for "${box.character}", switching to fallback`);
-                        initFallbackCanvas(activeCanvasDiv, box.character);
-                    }
+                        }
+                    });
                 }
             }, 100);
             
         } catch(err) {
-            clearTimeout(timeoutId);
-            addLog(`📝 "${box.character}" - Using simple drawing mode`);
-            initFallbackCanvas(activeCanvasDiv, box.character);
-            if (box.state === 'none') box.state = 'started';
-            updateBoxCardVisual(activeBoxIndex);
+            addLog(`⚠️ Error loading "${box.character}": ${err.message}`);
+            activeCanvasDiv.innerHTML = `<div class="error-badge">⚠️ "${box.character}" not supported</div>`;
         }
     }
     
-    // Apply payload (decode UTF-8 properly)
+    // Apply payload with proper UTF-8 handling
     function applyPayload(payload) {
         if (currentPayload && JSON.stringify(currentPayload) !== JSON.stringify(payload)) {
             const exists = historyEntries.some(e => JSON.stringify(e) === JSON.stringify(payload));
@@ -601,14 +573,34 @@
         
         currentPayload = payload;
         questionEl.innerText = payload.question || "Practice Hanzi";
+        currentHint = payload.hint || "";
+        if (currentHint && showHint) {
+            hintRow.innerText = `💡 Hint: ${currentHint}`;
+            hintRow.classList.add('visible');
+        } else {
+            hintRow.classList.remove('visible');
+        }
+        
+        // Parse answer string into characters (handle spaces as separators)
+        const answerStr = payload.answer;
+        const pinyinArray = payload.pinyin || [];
+        const characters = [];
+        
+        // Split by spaces to preserve word boundaries, but each character is separate
+        const words = answerStr.split(/\s+/);
+        for (let word of words) {
+            for (let ch of word) {
+                characters.push(ch);
+            }
+        }
         
         boxesData.forEach(box => destroyWriter(box));
         boxesData = [];
         
-        for (let ans of payload.answers) {
+        for (let i = 0; i < characters.length; i++) {
             boxesData.push({
-                character: ans.character,
-                pinyin: ans.pinyin || "",
+                character: characters[i],
+                pinyin: pinyinArray[i] || "",
                 state: 'none',
                 writer: null
             });
@@ -623,7 +615,7 @@
         addLog(`📚 Loaded: "${payload.question}" — ${boxesData.length} character(s)`);
     }
     
-    // Decode base64 with UTF-8 support
+    // Base64 UTF-8 decode
     function base64ToUtf8(str) {
         try {
             const binary = atob(str);
@@ -635,21 +627,18 @@
         }
     }
     
-    // Load from URL
+    // Load from URL hash
     function loadFromURL() {
         let encoded = null;
         if (window.location.hash && window.location.hash.length > 1) {
             encoded = window.location.hash.substring(1);
-        } else {
-            const params = new URLSearchParams(window.location.search);
-            if (params.has('data')) encoded = params.get('data');
         }
         
         if (encoded) {
             try {
                 const jsonStr = base64ToUtf8(encoded);
                 const payload = JSON.parse(jsonStr);
-                if (payload.question && Array.isArray(payload.answers) && payload.answers.length > 0) {
+                if (payload.question && payload.answer && Array.isArray(payload.pinyin)) {
                     applyPayload(payload);
                     return true;
                 }
@@ -660,43 +649,79 @@
         return false;
     }
     
-    // Local storage
+    // Save/load settings to localStorage
+    function saveSettings() {
+        localStorage.setItem('hanzi_settings', JSON.stringify({
+            showContour, showGrid, showHint
+        }));
+    }
+    
+    function loadSettings() {
+        try {
+            const saved = localStorage.getItem('hanzi_settings');
+            if (saved) {
+                const settings = JSON.parse(saved);
+                showContour = settings.showContour || false;
+                showGrid = settings.showGrid || false;
+                showHint = settings.showHint || false;
+            }
+        } catch(e) {}
+        // Update button UI
+        toggleContourBtn.innerText = showContour ? "📐 Contour ON" : "✍️ Contour OFF";
+        toggleContourBtn.classList.toggle('active', showContour);
+        toggleGridBtn.innerText = showGrid ? "🔲 Grid ON" : "🔲 Grid OFF";
+        toggleGridBtn.classList.toggle('active', showGrid);
+        toggleHintBtn.innerText = showHint ? "💡 Hint ON" : "💡 Hint OFF";
+        toggleHintBtn.classList.toggle('active', showHint);
+        
+        if (showHint && currentHint) {
+            hintRow.innerText = `💡 Hint: ${currentHint}`;
+            hintRow.classList.add('visible');
+        } else {
+            hintRow.classList.remove('visible');
+        }
+    }
+    
+    // Save history
     function saveHistoryToLocal() {
         try {
-            localStorage.setItem('hanzi_history_v3', JSON.stringify(historyEntries));
+            localStorage.setItem('hanzi_history_v4', JSON.stringify(historyEntries));
         } catch(e) {}
     }
     
     function loadHistoryFromLocal() {
         try {
-            const stored = localStorage.getItem('hanzi_history_v3');
+            const stored = localStorage.getItem('hanzi_history_v4');
             if (stored) historyEntries = JSON.parse(stored).slice(0, 20);
         } catch(e) {}
     }
     
-    // Menu
+    // Menu with previous questions
     function showMenu() {
         const overlay = document.createElement('div');
         overlay.className = 'menu-overlay';
         const panel = document.createElement('div');
         panel.className = 'menu-panel';
-        panel.innerHTML = `<h4>📜 Previous Questions</h4><ul class="history-list" id="menuHistoryList"></ul><button class="close-menu" id="closeMenuBtn">Close</button>`;
+        panel.innerHTML = `<h4>📜 Previous Questions</h4><ul class="history-list" id="menuHistoryList"></ul><button class="close-menu" id="closeMenuBtn">Close Menu</button>`;
         
         const list = panel.querySelector('#menuHistoryList');
         if (historyEntries.length === 0) {
-            list.innerHTML = '<li style="background:transparent">No history</li>';
+            list.innerHTML = '<li style="background:transparent; text-align:center;">No history yet</li>';
         } else {
             historyEntries.forEach((entry, idx) => {
                 const li = document.createElement('li');
-                const shortQ = entry.question.length > 35 ? entry.question.slice(0, 32) + '…' : entry.question;
-                li.innerHTML = `<span>${escapeHtml(shortQ)}</span><button class="remove-history" data-idx="${idx}">✕</button>`;
+                const shortQ = entry.question.length > 40 ? entry.question.slice(0, 37) + '…' : entry.question;
+                li.innerHTML = `<span style="flex:1;">${escapeHtml(shortQ)}</span><button class="remove-history" data-idx="${idx}">✕</button>`;
                 li.querySelector('.remove-history').addEventListener('click', (e) => {
                     e.stopPropagation();
                     historyEntries.splice(idx, 1);
                     saveHistoryToLocal();
                     showMenu();
                 });
-                li.addEventListener('click', () => { applyPayload(entry); closeMenu(overlay); });
+                li.addEventListener('click', () => {
+                    applyPayload(entry);
+                    closeMenu(overlay);
+                });
                 list.appendChild(li);
             });
         }
@@ -709,41 +734,71 @@
     function closeMenu(overlay) { if (overlay?.parentNode) overlay.remove(); }
     burgerBtn.addEventListener('click', showMenu);
     
-    // Contour toggle
+    // Control toggles
+    toggleGridBtn.addEventListener('click', () => {
+        showGrid = !showGrid;
+        toggleGridBtn.innerText = showGrid ? "🔲 Grid ON" : "🔲 Grid OFF";
+        toggleGridBtn.classList.toggle('active', showGrid);
+        saveSettings();
+        if (currentPayload && boxesData[activeBoxIndex]) loadActiveCanvas();
+        addLog(`Grid ${showGrid ? 'enabled' : 'disabled'}`);
+    });
+    
     toggleContourBtn.addEventListener('click', () => {
         showContour = !showContour;
         toggleContourBtn.innerText = showContour ? "📐 Contour ON" : "✍️ Contour OFF";
         toggleContourBtn.classList.toggle('active', showContour);
+        saveSettings();
         if (currentPayload && boxesData[activeBoxIndex]) loadActiveCanvas();
         addLog(`Contour ${showContour ? 'enabled' : 'disabled'}`);
     });
     
-    // Empty state
+    toggleHintBtn.addEventListener('click', () => {
+        showHint = !showHint;
+        toggleHintBtn.innerText = showHint ? "💡 Hint ON" : "💡 Hint OFF";
+        toggleHintBtn.classList.toggle('active', showHint);
+        saveSettings();
+        if (showHint && currentHint) {
+            hintRow.innerText = `💡 Hint: ${currentHint}`;
+            hintRow.classList.add('visible');
+        } else {
+            hintRow.classList.remove('visible');
+        }
+        addLog(`Hint ${showHint ? 'shown' : 'hidden'}`);
+    });
+    
+    // Empty state with AI prompt
     function showEmptyPrompt() {
-        questionEl.innerText = "🤖 AI Hanzi Learning";
+        questionEl.innerText = "🤖 AI Hanzi Learning Assistant";
         boxesContainer.innerHTML = '';
         const div = document.createElement('div');
         div.className = 'ai-prompt-area';
         div.innerHTML = `
             <strong>✨ No active quiz</strong><br>
-            <textarea id="aiPromptText" rows="4">Create a Hanzi practice JSON:
+            <div style="text-align:left; font-size:0.75rem; margin-top:8px;">
+            <strong>Standard payload format:</strong><br>
+            <code>{"question":"...","answer":"汉字","pinyin":["han","zi"],"hint":"..."}</code>
+            </div>
+            <textarea id="aiPromptText" rows="5">Create a Hanzi practice JSON following the standard format:
 {
-  "question": "What is 'hello' in Chinese?",
-  "answers": [
-    { "character": "你好", "pinyin": "nǐ hǎo" },
-    { "character": "朋友", "pinyin": "péng you" }
-  ]
+  "question": "How do you say 'Hello' in Chinese?",
+  "answer": "你好",
+  "pinyin": ["nǐ", "hǎo"],
+  "hint": "Two characters meaning 'you' and 'good'"
 }
-Encode to base64 and use: app.html#BASE64_HERE</textarea>
+Encode to base64 and use: #BASE64_HERE</textarea>
             <button id="copyPromptBtn">📋 Copy Prompt</button>
-            <div style="margin-top:12px; font-size:0.7rem;">Example: <code>#eyJxdWVzdGlvbiI6IuS9oOWwj+WQjeWtliIsImFuc3dlcnMiOlt7ImNoYXJhY3RlciI6IuS9oOWwjSIsInBpbnlpbiI6Im7DgyBo4oCfbyJ9XX0=</code></div>
+            <div style="margin-top:12px; font-size:0.7rem; word-break:break-all;">
+            <strong>Example link:</strong><br>
+            <code>#eyJxdWVzdGlvbiI6IkhvdyBkbyB5b3Ugc2F5ICdIZWxsbycgaW4gQ2hpbmVzZT8iLCJhbnN3ZXIiOiLkvaDlpb0iLCJwaW55aW4iOlsiJW4kIiwiaMOjbyJdLCJoaW50IjoiVHdvIGNoYXJhY3RlcnMifQ==</code>
+            </div>
         `;
         boxesContainer.appendChild(div);
         activeCanvasDiv.innerHTML = '<div style="text-align:center; padding:2rem;">⬆️ Add #payload to URL</div>';
         document.getElementById('copyPromptBtn')?.addEventListener('click', () => {
             const txt = document.getElementById('aiPromptText').value;
             navigator.clipboard.writeText(txt);
-            addLog("📋 Prompt copied");
+            addLog("📋 AI prompt copied");
         });
     }
     
@@ -759,10 +814,12 @@ Encode to base64 and use: app.html#BASE64_HERE</textarea>
     window.addEventListener('hashchange', () => {
         const loaded = loadFromURL();
         if (!loaded && !currentPayload) showEmptyPrompt();
+        else if (loaded && currentPayload) renderBoxes();
     });
     
-    // Init
+    // Initialize
     function init() {
+        loadSettings();
         loadHistoryFromLocal();
         const loaded = loadFromURL();
         if (!loaded) showEmptyPrompt();

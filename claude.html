@@ -4,585 +4,677 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>&#28450;&#23383; HanziDojo</title>
+<title>HanziDojo</title>
 <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
-
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Sora:wght@300;400;600;700&display=swap');
 
 :root {
 –bg:       #0e0e10;
-–surface:  #18181c;
-–surface2: #22222a;
+–surf:     #18181c;
+–surf2:    #22222a;
 –border:   #2e2e3a;
 –accent:   #e8c96d;
-–accent2:  #7c9ef5;
+–blue:     #7c9ef5;
 –red:      #e05c5c;
 –green:    #5ccb8a;
 –text:     #e8e8ee;
 –muted:    #6c6c80;
 –pinyin:   #a0a0b8;
-–radius:   6px;
-–box-size: 62px;
+–r:        6px;
+–box:      64px;
 }
 
 - { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+  background: var(–bg); color: var(–text);
+  font-family: ‘Sora’, sans-serif;
+  display: flex; flex-direction: column;
+  min-height: 100dvh; overflow-x: hidden;
+  }
 
-body {
-background: var(–bg);
-color: var(–text);
-font-family: ‘Sora’, sans-serif;
-display: flex;
-flex-direction: column;
-min-height: 100dvh;
-overflow-x: hidden;
-}
-
-/* TOOLBAR */
+/* ── TOOLBAR ── */
 #toolbar {
-display: flex; align-items: center; gap: 8px;
-padding: 8px 12px; background: var(–surface);
-border-bottom: 1px solid var(–border); flex-shrink: 0; flex-wrap: wrap;
+display: flex; align-items: center; gap: 6px;
+padding: 7px 10px; background: var(–surf);
+border-bottom: 1px solid var(–border);
+flex-shrink: 0; flex-wrap: nowrap; overflow-x: auto;
 }
-#burger-btn {
-background: none; border: 1px solid var(–border); color: var(–text);
-width: 36px; height: 36px; border-radius: var(–radius); cursor: pointer;
-font-size: 18px; display: flex; align-items: center; justify-content: center;
-flex-shrink: 0; transition: border-color .2s, background .2s;
-}
-#burger-btn:hover { border-color: var(–accent); background: var(–surface2); }
-.toolbar-title {
-font-family: ‘Noto Serif SC’, serif; font-size: 16px;
-color: var(–accent); letter-spacing: .05em; margin-right: auto;
-}
-.toggle-group { display: flex; gap: 4px; }
-.toggle-btn {
-background: var(–surface2); border: 1px solid var(–border); color: var(–muted);
-padding: 5px 10px; border-radius: var(–radius); font-size: 11px;
-font-family: ‘JetBrains Mono’, monospace; cursor: pointer;
-transition: all .2s; white-space: nowrap;
-}
-.toggle-btn.active { background: var(–accent); border-color: var(–accent); color: #000; font-weight: 600; }
-.toggle-btn:hover:not(.active) { border-color: var(–accent); color: var(–text); }
+#toolbar::-webkit-scrollbar { display: none; }
 
-/* BURGER MENU */
-#menu-overlay { display: none; position: fixed; inset: 0; z-index: 100; }
+.tb-btn {
+flex-shrink: 0;
+background: var(–surf2); border: 1px solid var(–border); color: var(–muted);
+height: 34px; padding: 0 10px; border-radius: var(–r);
+font-size: 11px; font-family: ‘JetBrains Mono’, monospace;
+cursor: pointer; transition: all .15s; white-space: nowrap;
+display: flex; align-items: center; gap: 5px;
+}
+.tb-btn:hover { border-color: var(–accent); color: var(–text); }
+.tb-btn.on { background: var(–accent); border-color: var(–accent); color: #000; font-weight: 700; }
+.tb-btn.icon { width: 34px; padding: 0; justify-content: center; font-size: 16px; }
+
+#tb-title {
+font-family: ‘Noto Serif SC’, serif; font-size: 15px;
+color: var(–accent); letter-spacing: .05em;
+flex-shrink: 0; margin: 0 4px;
+text-decoration: none;
+}
+
+/* ── BURGER MENU ── */
+#menu-overlay { display: none; position: fixed; inset: 0; z-index: 200; }
 #menu-overlay.open { display: block; }
-#menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+#menu-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
 #menu-panel {
-position: absolute; top: 0; left: 0; width: min(300px, 85vw); height: 100%;
-background: var(–surface); border-right: 1px solid var(–border);
+position: absolute; top: 0; left: 0;
+width: min(310px, 88vw); height: 100%;
+background: var(–surf); border-right: 1px solid var(–border);
 display: flex; flex-direction: column; padding: 16px; overflow-y: auto;
 }
-#menu-panel h2 {
-font-size: 13px; font-family: ‘JetBrains Mono’, monospace; color: var(–accent);
-letter-spacing: .1em; text-transform: uppercase; margin-bottom: 12px;
+#menu-panel h3 {
+font-size: 11px; font-family: ‘JetBrains Mono’, monospace;
+color: var(–accent); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px;
 }
-.menu-item {
-background: var(–surface2); border: 1px solid var(–border);
-border-radius: var(–radius); padding: 10px 12px; margin-bottom: 8px;
-cursor: pointer; transition: border-color .2s;
+.m-item {
+background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); padding: 10px 12px; margin-bottom: 8px;
+cursor: pointer; transition: border-color .15s;
 }
-.menu-item:hover { border-color: var(–accent); }
-.mi-q { font-size: 11px; color: var(–muted); margin-bottom: 3px; font-family: ‘JetBrains Mono’, monospace; }
-.mi-en { font-size: 13px; color: var(–text); margin-bottom: 2px; }
-.mi-zh { font-family: ‘Noto Serif SC’, serif; font-size: 15px; color: var(–accent2); }
+.m-item:hover { border-color: var(–accent); }
+.m-item .mq  { font-size: 11px; color: var(–muted); margin-bottom: 3px; font-family: ‘JetBrains Mono’, monospace; }
+.m-item .men { font-size: 13px; color: var(–text); margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-item .mzh { font-family: ‘Noto Serif SC’, serif; font-size: 16px; color: var(–blue); }
+#menu-empty { font-size: 12px; color: var(–muted); font-family: ‘JetBrains Mono’, monospace; }
 
-/* QUIZ ROWS */
+/* ── QUESTION ROW ── */
 #question-row {
-padding: 10px 14px 6px; background: var(–surface);
+padding: 9px 14px 7px; background: var(–surf);
 border-bottom: 1px solid var(–border); flex-shrink: 0;
 }
-#question-label {
-font-size: 11px; font-family: ‘JetBrains Mono’, monospace;
-color: var(–muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px;
-}
-#question-text { font-size: 16px; font-weight: 600; color: var(–text); line-height: 1.4; }
+#q-label { font-size: 10px; font-family: ‘JetBrains Mono’, monospace; color: var(–muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+#q-text  { font-size: 16px; font-weight: 600; color: var(–text); line-height: 1.4; }
+#q-hint  { font-size: 12px; color: var(–muted); margin-top: 4px; font-style: italic; }
 
+/* ── BOXES ROW ── */
 #boxes-row {
-padding: 10px 12px 8px; background: var(–surface);
-border-bottom: 1px solid var(–border); overflow-x: auto; flex-shrink: 0;
+padding: 10px 12px 8px; background: var(–surf);
+border-bottom: 1px solid var(–border);
+overflow-x: auto; flex-shrink: 0;
 }
-#boxes-container { display: flex; flex-wrap: nowrap; gap: 4px; align-items: flex-end; }
-.word-gap { width: 16px; flex-shrink: 0; }
+#boxes-row::-webkit-scrollbar { height: 3px; }
+#boxes-row::-webkit-scrollbar-thumb { background: var(–border); border-radius: 9px; }
 
-.char-box { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; cursor: pointer; }
-.char-box-inner {
-width: var(–box-size); height: var(–box-size);
-border: 2px solid var(–border); border-radius: 4px;
-display: flex; align-items: center; justify-content: center;
-font-family: ‘Noto Serif SC’, serif; font-size: 28px;
-background: var(–surface2); transition: border-color .2s, background .2s;
-position: relative; overflow: hidden;
+#boxes-wrap { display: flex; flex-wrap: nowrap; gap: 5px; align-items: flex-end; min-height: calc(var(–box) + 18px); }
+.word-sep { width: 18px; flex-shrink: 0; }
+
+.cbox {
+display: flex; flex-direction: column; align-items: center; gap: 2px;
+flex-shrink: 0; cursor: pointer;
 }
-.char-box-inner::after {
+.cbox-inner {
+width: var(–box); height: var(–box);
+border: 2px solid var(–border); border-radius: 5px;
+display: flex; align-items: center; justify-content: center;
+font-family: ‘Noto Serif SC’, serif; font-size: 30px;
+background: var(–surf2); transition: border-color .2s, background .2s;
+position: relative; overflow: hidden; user-select: none;
+}
+.cbox-inner::after {
 content: ‘’; position: absolute; bottom: 0; left: 0; right: 0;
 height: 3px; background: transparent; transition: background .3s;
 }
-.char-box.state-untouched .char-box-inner  { border-color: var(–border); color: var(–muted); }
-.char-box.state-in-progress .char-box-inner { border-color: var(–accent2); color: var(–text); background: rgba(124,158,245,.07); }
-.char-box.state-in-progress .char-box-inner::after { background: var(–accent2); }
-.char-box.state-done .char-box-inner  { border-color: var(–green); color: var(–text); }
-.char-box.state-done .char-box-inner::after  { background: var(–green); }
-.char-box.state-error .char-box-inner { border-color: var(–red); color: var(–text); }
-.char-box.state-error .char-box-inner::after { background: var(–red); }
-.char-box.active .char-box-inner {
-border-color: var(–accent) !important;
-background: rgba(232,201,109,.10) !important;
-box-shadow: 0 0 0 1px var(–accent);
-}
-.pinyin-label {
-font-size: 9px; color: var(–pinyin); font-family: ‘Sora’, sans-serif;
-letter-spacing: .04em; height: 12px; line-height: 12px; text-align: center;
-}
-.mistake-badge {
-position: absolute; top: 2px; right: 3px;
-font-size: 9px; font-family: ‘JetBrains Mono’, monospace; color: var(–red); font-weight: 600;
-}
+/* states */
+.cbox.s-idle    .cbox-inner { border-color: var(–border); color: var(–muted); font-size: 20px; }
+.cbox.s-prog    .cbox-inner { border-color: var(–blue); background: rgba(124,158,245,.07); }
+.cbox.s-prog    .cbox-inner::after { background: var(–blue); }
+.cbox.s-err     .cbox-inner { border-color: var(–red); }
+.cbox.s-err     .cbox-inner::after { background: var(–red); }
+.cbox.s-done    .cbox-inner { border-color: var(–green); }
+.cbox.s-done    .cbox-inner::after { background: var(–green); }
+/* active glow */
+.cbox.active    .cbox-inner { border-color: var(–accent) !important; background: rgba(232,201,109,.10) !important; box-shadow: 0 0 0 1px var(–accent); }
 
-/* CANVAS */
-#canvas-row { flex: 0 0 auto; background: var(–bg); }
-#canvas-wrapper {
-position: relative; width: 100vw; max-width: 100vw; aspect-ratio: 1 / 1;
-background: var(–surface); border-top: 1px solid var(–border); border-bottom: 1px solid var(–border);
+.cbox-pinyin { font-size: 9px; color: var(–pinyin); height: 13px; line-height: 13px; text-align: center; font-family: ‘Sora’, sans-serif; letter-spacing: .03em; }
+.mbadge { position: absolute; top: 2px; right: 3px; font-size: 9px; font-family: ‘JetBrains Mono’, monospace; color: var(–red); font-weight: 700; }
+
+/* ── CANVAS ROW ── */
+#canvas-row { flex: 0 0 auto; }
+#canvas-wrap {
+position: relative; width: 100vw; max-width: 100vw; aspect-ratio: 1/1;
+background: var(–surf);
+border-top: 1px solid var(–border); border-bottom: 1px solid var(–border);
 }
-#canvas-wrapper svg { display: block; }
-#canvas-char-label {
-position: absolute; top: 10px; left: 14px;
+#canvas-wrap svg { display: block; }
+#clabel {
+position: absolute; top: 9px; left: 12px;
 font-family: ‘JetBrains Mono’, monospace; font-size: 11px; color: var(–muted);
-letter-spacing: .08em; text-transform: uppercase; pointer-events: none; z-index: 2;
+letter-spacing: .08em; pointer-events: none; z-index: 2; text-transform: uppercase;
 }
-#canvas-grid { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+#cgrid { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+#char-target { position: absolute; inset: 0; z-index: 3; }
 
-/* LOG */
+/* ── LOG ROW ── */
 #log-row {
-flex: 1 1 auto; display: flex; flex-direction: column;
-min-height: 120px; max-height: 220px;
-background: var(–surface); border-top: 1px solid var(–border);
+flex: 1 1 0; display: flex; flex-direction: column;
+min-height: 110px; max-height: 200px;
+background: var(–surf); border-top: 1px solid var(–border);
+overflow: hidden;
 }
-#log-header {
+#log-head {
 display: flex; align-items: center; justify-content: space-between;
-padding: 6px 12px; border-bottom: 1px solid var(–border); flex-shrink: 0;
+padding: 5px 12px; border-bottom: 1px solid var(–border); flex-shrink: 0;
 }
-#log-header span { font-size: 11px; font-family: ‘JetBrains Mono’, monospace; color: var(–muted); text-transform: uppercase; letter-spacing: .08em; }
-#copy-log-btn {
-background: var(–surface2); border: 1px solid var(–border); color: var(–muted);
-padding: 4px 10px; border-radius: var(–radius); font-size: 11px;
-font-family: ‘JetBrains Mono’, monospace; cursor: pointer; transition: all .2s;
+#log-head span { font-size: 10px; font-family: ‘JetBrains Mono’, monospace; color: var(–muted); text-transform: uppercase; letter-spacing: .1em; }
+#copy-log {
+background: var(–surf2); border: 1px solid var(–border); color: var(–muted);
+padding: 3px 10px; border-radius: var(–r); font-size: 11px;
+font-family: ‘JetBrains Mono’, monospace; cursor: pointer; transition: all .15s;
 }
-#copy-log-btn:hover { border-color: var(–accent); color: var(–accent); }
-#log-content { flex: 1; overflow-y: auto; padding: 8px 12px; font-family: ‘JetBrains Mono’, monospace; font-size: 11px; line-height: 1.6; }
-.log-entry { display: flex; gap: 8px; margin-bottom: 2px; }
-.log-time { color: var(–muted); flex-shrink: 0; }
-.log-msg.ok   { color: var(–green); }
-.log-msg.err  { color: var(–red); }
-.log-msg.info { color: var(–accent2); }
-.log-msg.done { color: var(–accent); font-weight: 600; }
+#copy-log:hover { border-color: var(–accent); color: var(–accent); }
+#log-body { flex: 1; overflow-y: auto; padding: 6px 12px; font-family: ‘JetBrains Mono’, monospace; font-size: 11px; line-height: 1.65; }
+#log-body::-webkit-scrollbar { width: 4px; }
+#log-body::-webkit-scrollbar-thumb { background: var(–border); border-radius: 9px; }
+.le { display: flex; gap: 8px; margin-bottom: 1px; }
+.lt { color: var(–muted); flex-shrink: 0; }
+.lm.ok   { color: var(–green); }
+.lm.err  { color: var(–red); }
+.lm.info { color: var(–blue); }
+.lm.done { color: var(–accent); font-weight: 700; }
+.lm.sys  { color: var(–muted); font-style: italic; }
 
-/* BUILDER */
-#no-payload {
+/* ── BUILDER / LANDING ── */
+#landing {
 flex: 1; display: flex; flex-direction: column; align-items: center;
-padding: 16px 16px 48px; overflow-y: auto;
+padding: 12px 14px 48px; overflow-y: auto;
 }
-.builder-hero { text-align: center; padding: 18px 0 22px; }
-.builder-hero h1 { font-family: ‘Noto Serif SC’, serif; color: var(–accent); font-size: 26px; letter-spacing: .04em; margin-bottom: 6px; }
-.builder-hero p  { color: var(–muted); font-size: 13px; line-height: 1.5; }
+.hero { text-align: center; padding: 18px 0 20px; }
+.hero h1 { font-family: ‘Noto Serif SC’, serif; color: var(–accent); font-size: 28px; margin-bottom: 6px; }
+.hero p  { color: var(–muted); font-size: 13px; line-height: 1.5; }
 
-.bcard {
+.card {
 width: 100%; max-width: 560px;
-background: var(–surface); border: 1px solid var(–border);
+background: var(–surf); border: 1px solid var(–border);
 border-radius: 10px; padding: 18px; margin-bottom: 14px;
 }
-.flabel {
-display: block; font-size: 11px; font-family: ‘JetBrains Mono’, monospace;
-color: var(–accent); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px;
-}
-.fsub { font-size: 11px; color: var(–muted); margin-bottom: 10px; line-height: 1.5; }
+.lbl { display: block; font-size: 11px; font-family: ‘JetBrains Mono’, monospace; color: var(–accent); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 6px; }
+.sub { font-size: 11px; color: var(–muted); margin-bottom: 10px; line-height: 1.5; }
 
-.b-input {
-width: 100%; background: var(–surface2); border: 1px solid var(–border);
-border-radius: var(–radius); color: var(–text); font-family: ‘Sora’, sans-serif;
-font-size: 14px; padding: 10px 12px; outline: none; transition: border-color .2s;
+.inp {
+width: 100%; background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–text); font-family: ‘Sora’, sans-serif;
+font-size: 14px; padding: 9px 12px; outline: none; transition: border-color .2s;
 }
-.b-input:focus { border-color: var(–accent2); }
-.b-input::placeholder { color: var(–muted); }
+.inp:focus { border-color: var(–blue); }
+.inp::placeholder { color: var(–muted); }
+
+/* answer builder */
+.ans-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.ans-char {
+width: 68px; flex-shrink: 0; background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–text); font-family: ‘Noto Serif SC’, serif;
+font-size: 15px; padding: 9px 8px; outline: none; text-align: center; transition: border-color .2s;
+}
+.ans-char:focus { border-color: var(–accent); }
+.ans-char::placeholder { font-family: ‘Sora’, sans-serif; font-size: 11px; color: var(–muted); }
+.ans-pin {
+flex: 1; background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–pinyin); font-family: ‘Sora’, sans-serif;
+font-size: 13px; padding: 9px 10px; outline: none; transition: border-color .2s;
+}
+.ans-pin:focus { border-color: var(–blue); }
+.ans-pin::placeholder { font-size: 11px; color: var(–muted); }
+
+.ans-hint {
+flex: 1; background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–muted); font-family: ‘Sora’, sans-serif;
+font-size: 12px; padding: 9px 10px; outline: none; transition: border-color .2s;
+}
+.ans-hint:focus { border-color: var(–blue); }
+.ans-hint::placeholder { font-size: 10px; color: var(–border); }
+
+.del-btn {
+width: 32px; flex-shrink: 0; background: none; border: none;
+color: var(–muted); font-size: 18px; cursor: pointer; transition: color .15s;
+display: flex; align-items: center; justify-content: center; border-radius: var(–r);
+}
+.del-btn:hover { color: var(–red); }
+
+.add-btn {
+width: 100%; background: var(–surf2); border: 1px dashed var(–border);
+border-radius: var(–r); color: var(–muted); font-size: 12px;
+font-family: ‘JetBrains Mono’, monospace; padding: 8px;
+cursor: pointer; transition: all .15s; text-align: center;
+}
+.add-btn:hover { border-color: var(–accent); color: var(–accent); }
 
 .paste-row { display: flex; gap: 8px; margin-bottom: 12px; }
-.paste-text {
-flex: 1; background: var(–surface2); border: 1px solid var(–border);
-border-radius: var(–radius); color: var(–text);
+.paste-inp {
+flex: 1; background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–text);
 font-family: ‘Noto Serif SC’, serif; font-size: 15px;
 padding: 8px 12px; outline: none; transition: border-color .2s;
 }
-.paste-text:focus { border-color: var(–accent2); }
-.paste-text::placeholder { font-family: ‘Sora’, sans-serif; font-size: 11px; color: var(–muted); }
+.paste-inp:focus { border-color: var(–blue); }
+.paste-inp::placeholder { font-family: ‘Sora’, sans-serif; font-size: 11px; color: var(–muted); }
 .paste-go {
-background: var(–surface2); border: 1px solid var(–border); color: var(–muted);
-padding: 8px 14px; border-radius: var(–radius); font-size: 11px;
-font-family: ‘JetBrains Mono’, monospace; cursor: pointer; transition: all .2s; white-space: nowrap;
+background: var(–surf2); border: 1px solid var(–border); color: var(–muted);
+padding: 8px 14px; border-radius: var(–r); font-size: 11px;
+font-family: ‘JetBrains Mono’, monospace; cursor: pointer; transition: all .15s; white-space: nowrap;
 }
 .paste-go:hover { border-color: var(–accent); color: var(–accent); }
 
-#char-rows { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
-.crow {
-display: flex; align-items: center; gap: 7px;
-background: var(–surface2); border: 1px solid var(–border);
-border-radius: var(–radius); padding: 7px 10px; transition: border-color .2s;
-}
-.crow:focus-within { border-color: var(–accent2); }
-.crow-num { font-size: 10px; font-family: ‘JetBrains Mono’, monospace; color: var(–muted); width: 16px; text-align: right; flex-shrink: 0; }
-.wb-btn {
-width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%;
-border: 1px solid var(–border); background: var(–surface); color: var(–muted);
-font-size: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center;
-transition: all .2s;
-}
-.wb-btn.on { border-color: var(–accent2); color: var(–accent2); background: rgba(124,158,245,.12); }
-.wb-btn:hover { border-color: var(–accent); color: var(–accent); }
-.ci {
-width: 40px; flex-shrink: 0; background: transparent; border: none;
-border-bottom: 1px solid var(–border); color: var(–text);
-font-family: ‘Noto Serif SC’, serif; font-size: 22px; text-align: center;
-outline: none; padding: 1px 0; transition: border-color .2s;
-}
-.ci:focus { border-color: var(–accent); }
-.pi {
-flex: 1; background: transparent; border: none;
-border-bottom: 1px solid var(–border); color: var(–pinyin);
-font-family: ‘Sora’, sans-serif; font-size: 13px;
-outline: none; padding: 1px 4px; transition: border-color .2s;
-}
-.pi:focus { border-color: var(–accent2); }
-.pi::placeholder { color: var(–border); font-size: 11px; }
-.del-r {
-width: 22px; height: 22px; flex-shrink: 0; background: none; border: none;
-color: var(–muted); font-size: 17px; cursor: pointer;
-display: flex; align-items: center; justify-content: center;
-border-radius: 4px; transition: color .2s; line-height: 1;
-}
-.del-r:hover { color: var(–red); }
-.add-row-btn {
-width: 100%; background: var(–surface2); border: 1px dashed var(–border);
-border-radius: var(–radius); color: var(–muted); font-size: 12px;
-font-family: ‘JetBrains Mono’, monospace; padding: 8px; cursor: pointer;
-transition: all .2s; text-align: center; letter-spacing: .04em;
-}
-.add-row-btn:hover { border-color: var(–accent); color: var(–accent); }
-.wb-hint { font-size: 10px; color: var(–muted); font-family: ‘JetBrains Mono’, monospace; margin-top: 7px; }
-.wb-hint b { color: var(–accent2); font-weight: normal; }
-
 #bpreview {
 width: 100%; max-width: 560px;
-background: var(–surface2); border: 1px solid var(–border);
-border-radius: var(–radius); color: var(–muted);
+background: var(–surf2); border: 1px solid var(–border);
+border-radius: var(–r); color: var(–muted);
 font-family: ‘JetBrains Mono’, monospace; font-size: 10px; line-height: 1.7;
 padding: 10px 12px; margin-bottom: 10px;
 white-space: pre-wrap; word-break: break-all;
-max-height: 180px; overflow-y: auto;
+max-height: 170px; overflow-y: auto;
 }
-.berr {
-font-size: 11px; color: var(–red); font-family: ‘JetBrains Mono’, monospace;
-min-height: 16px; width: 100%; max-width: 560px; text-align: center; margin-bottom: 8px;
-}
-.bactions { width: 100%; max-width: 560px; display: flex; gap: 10px; }
+.berr { font-size: 11px; color: var(–red); font-family: ‘JetBrains Mono’, monospace; min-height: 16px; width: 100%; max-width: 560px; text-align: center; margin-bottom: 8px; }
+.bact { width: 100%; max-width: 560px; display: flex; gap: 10px; }
 #start-btn {
 flex: 1; background: var(–accent); border: none; color: #000;
-padding: 14px 20px; border-radius: var(–radius);
+padding: 13px 20px; border-radius: var(–r);
 font-family: ‘Sora’, sans-serif; font-size: 15px; font-weight: 700;
-cursor: pointer; transition: opacity .2s, transform .1s; letter-spacing: .02em;
+cursor: pointer; transition: opacity .15s; letter-spacing: .02em;
 }
-#start-btn:hover { opacity: .88; }
-#start-btn:active { transform: scale(.98); }
-#start-btn:disabled { opacity: .32; cursor: not-allowed; }
-#copy-link-btn {
-background: var(–surface2); border: 1px solid var(–border); color: var(–muted);
-padding: 14px 16px; border-radius: var(–radius); font-size: 18px;
-cursor: pointer; transition: all .2s;
+#start-btn:hover { opacity: .87; }
+#start-btn:disabled { opacity: .3; cursor: not-allowed; }
+#copy-link {
+background: var(–surf2); border: 1px solid var(–border); color: var(–muted);
+padding: 13px 14px; border-radius: var(–r); font-size: 18px;
+cursor: pointer; transition: all .15s;
 }
-#copy-link-btn:hover { border-color: var(–accent2); color: var(–accent2); }
-#copy-link-btn:disabled { opacity: .32; cursor: not-allowed; }
+#copy-link:hover { border-color: var(–blue); color: var(–blue); }
+#copy-link:disabled { opacity: .3; cursor: not-allowed; }
 
-::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(–border); border-radius: 99px; }
+::-webkit-scrollbar-thumb { background: var(–border); border-radius: 9px; }
 </style>
 
 </head>
 <body>
 
-<!-- TOOLBAR -->
+<!-- ════════════════════════════════
+     TOOLBAR (always visible)
+════════════════════════════════ -->
 
 <div id="toolbar">
-  <button id="burger-btn" onclick="toggleMenu()">&#9776;</button>
-  <span class="toolbar-title">&#28450;&#23383; HanziDojo</span>
-  <div class="toggle-group">
-    <button class="toggle-btn active" id="toggle-contour" onclick="toggleContour(this)">CONTOUR</button>
-    <button class="toggle-btn active" id="toggle-pinyin"  onclick="togglePinyin(this)">PINYIN</button>
-  </div>
+  <button class="tb-btn icon" id="btn-burger" onclick="toggleMenu()" title="History">&#9776;</button>
+  <a id="tb-title" href="." title="Home">&#28450;&#23383; HanziDojo</a>
+
+<button class="tb-btn" id="btn-grid"    onclick="tbToggle('grid')"    title="Toggle grid">☷ GRID</button>
+<button class="tb-btn" id="btn-contour" onclick="tbToggle('contour')" title="Toggle contour">◕ CONTOUR</button>
+<button class="tb-btn" id="btn-hint"    onclick="tbToggle('hint')"    title="Toggle hint">💡 HINT</button>
+<button class="tb-btn" id="btn-pinyin"  onclick="tbToggle('pinyin')"  title="Toggle pinyin">あ PINYIN</button>
+
 </div>
 
-<!-- MENU -->
+<!-- ════════════════════════════════
+     BURGER / HISTORY PANEL
+════════════════════════════════ -->
 
 <div id="menu-overlay">
   <div id="menu-backdrop" onclick="closeMenu()"></div>
   <div id="menu-panel">
-    <h2>&#128203; History</h2>
+    <h3>&#128203; Recent Questions</h3>
     <div id="menu-list"></div>
   </div>
 </div>
 
-<!-- QUIZ: question -->
+<!-- ════════════════════════════════
+     QUIZ MODE
+════════════════════════════════ -->
 
 <div id="question-row" style="display:none">
-  <div id="question-label">Question</div>
-  <div id="question-text"></div>
+  <div id="q-label">Question</div>
+  <div id="q-text"></div>
+  <div id="q-hint" style="display:none"></div>
 </div>
-
-<!-- QUIZ: boxes -->
 
 <div id="boxes-row" style="display:none">
-  <div id="boxes-container"></div>
+  <div id="boxes-wrap"></div>
 </div>
-
-<!-- QUIZ: canvas -->
 
 <div id="canvas-row" style="display:none">
-  <div id="canvas-wrapper">
-    <canvas id="canvas-grid"></canvas>
-    <div id="canvas-char-label"></div>
-    <div id="character-target-div" style="position:absolute;inset:0;"></div>
+  <div id="canvas-wrap">
+    <canvas id="cgrid"></canvas>
+    <div id="clabel"></div>
+    <div id="char-target"></div>
   </div>
 </div>
-
-<!-- QUIZ: log -->
 
 <div id="log-row" style="display:none">
-  <div id="log-header">
+  <div id="log-head">
     <span>Session Log</span>
-    <button id="copy-log-btn" onclick="copyLog()">Copy All</button>
+    <button id="copy-log" onclick="copyLog()">Copy All</button>
   </div>
-  <div id="log-content"></div>
+  <div id="log-body"></div>
 </div>
 
-<!-- BUILDER (shown when no hash payload) -->
+<!-- ════════════════════════════════
+     LANDING / BUILDER
+════════════════════════════════ -->
 
-<div id="no-payload">
-
-  <div class="builder-hero">
+<div id="landing">
+  <div class="hero">
     <h1>&#28450;&#23383; HanziDojo</h1>
-    <p>Create a practice question below, or use AI to generate one.</p>
+    <p>Practice writing Chinese characters stroke by stroke.<br>Build a question below, or use AI to generate one.</p>
   </div>
 
-  <!-- 1. Question text -->
+  <!-- Question -->
 
-  <div class="bcard">
-    <label class="flabel" for="b-question">Question / Prompt</label>
-    <div class="fsub">The English instruction shown above the character boxes during practice.</div>
-    <input id="b-question" class="b-input" type="text"
-      placeholder="e.g.  Write: Good morning!"
-      oninput="builderUpdate()">
+  <div class="card">
+    <label class="lbl" for="b-q">Question / Prompt</label>
+    <div class="sub">The English instruction shown above the character boxes, e.g. "How do you say Hello?"</div>
+    <input id="b-q" class="inp" type="text" placeholder="e.g.  How do you say 'Thank you'?" oninput="bUpdate()">
   </div>
 
-  <!-- 2. Answer characters -->
+  <!-- Answer -->
 
-  <div class="bcard">
-    <label class="flabel">Answer characters &amp; pinyin</label>
-    <div class="fsub">
-      Paste Chinese text below to auto-split into individual character rows, then fill in pinyin.
-      Use the <b>&#10631;</b> button on any row to mark a word boundary before it (creates visual spacing in the box strip).
+  <div class="card">
+    <label class="lbl">Answer &amp; Pinyin</label>
+    <div class="sub">
+      Paste Chinese text to auto-split, then fill in pinyin per character.
+      Spaces in your paste become word separators in the box strip.
     </div>
-
-```
-<div class="paste-row">
-  <input id="b-paste" class="paste-text" type="text"
-    placeholder="Paste Chinese text to auto-split&#8230;">
-  <button class="paste-go" onclick="doSplitPaste()">Split &#8594;</button>
-</div>
-
-<div id="char-rows"></div>
-<button class="add-row-btn" onclick="addCharRow()">&#65291; Add character</button>
-<div class="wb-hint">Tap <b>&#10631;</b> to begin a new word before that character</div>
-```
-
+    <div class="paste-row">
+      <input id="b-paste" class="paste-inp" type="text" placeholder="Paste Chinese to auto-split&#8230;">
+      <button class="paste-go" onclick="doPaste()">Split &#8594;</button>
+    </div>
+    <div id="ans-rows"></div>
+    <button class="add-btn" onclick="addRow()">&#65291; Add character</button>
   </div>
 
-  <!-- Preview -->
+  <!-- Hint (optional) -->
+
+  <div class="card">
+    <label class="lbl" for="b-hint">Hint <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <div class="sub">Shown below the question when the Hint toggle is on.</div>
+    <input id="b-hint" class="inp" type="text" placeholder="e.g.  Two identical characters" oninput="bUpdate()">
+  </div>
+
+  <!-- Preview + actions -->
 
   <pre id="bpreview">&#8212; fill in the fields above &#8212;</pre>
 
   <div class="berr" id="berr"></div>
-
-  <!-- Actions -->
-
-  <div class="bactions">
-    <button id="start-btn" disabled onclick="builderSubmit()">Start Practice &#8594;</button>
-    <button id="copy-link-btn" disabled onclick="builderCopyLink()" title="Copy shareable link">&#128279;</button>
+  <div class="bact">
+    <button id="start-btn" disabled onclick="bSubmit()">Start Practice &#8594;</button>
+    <button id="copy-link" disabled onclick="bCopyLink()" title="Copy shareable link">&#128279;</button>
   </div>
 
-  <!-- AI section -->
+  <!-- AI prompt -->
 
-  <div class="bcard" style="margin-top:22px">
-    <label class="flabel">Generate with AI</label>
-    <div class="fsub">
-      Copy this prompt and paste it into any AI chat (Claude, ChatGPT, Gemini&#8230;).
-      The AI will reply with a ready-made link you can open directly.
-    </div>
-    <textarea id="ai-prompt-box" readonly
-      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);
+  <div class="card" style="margin-top:22px">
+    <label class="lbl">Generate with AI</label>
+    <div class="sub">Copy this prompt into any AI chat (Claude, ChatGPT, Gemini&#8230;). It will reply with a ready-made link.</div>
+    <textarea id="ai-prompt" readonly
+      style="width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:var(--r);
              color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.6;
-             padding:10px;resize:vertical;min-height:120px;outline:none;display:block;"></textarea>
-    <button id="copy-prompt-btn" onclick="copyPrompt()"
-      style="margin-top:8px;width:100%;background:var(--surface2);border:1px solid var(--border);
-             color:var(--muted);padding:9px;border-radius:var(--radius);font-size:11px;
-             font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .2s;"
-      onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'"
+             padding:10px;resize:vertical;min-height:130px;outline:none;display:block;"></textarea>
+    <button id="copy-ai-btn" onclick="copyAI()"
+      style="margin-top:8px;width:100%;background:var(--surf2);border:1px solid var(--border);
+             color:var(--muted);padding:9px;border-radius:var(--r);font-size:11px;
+             font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .15s;"
+      onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'"
       onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Copy AI Prompt</button>
   </div>
-
-</div><!-- /#no-payload -->
+</div>
 
 <script>
-// ==========================================================
-// STATE
-// ==========================================================
-var payload    = null;
-var charStates = [];
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS & STATE
+// ═══════════════════════════════════════════════════════════
+var HIST_KEY  = 'hdojo_history';
+var PREF_KEY  = 'hdojo_prefs';
+
+// Toggleable prefs (persisted)
+var prefs = { grid: true, contour: true, hint: true, pinyin: true };
+
+var payload    = null;   // current quiz payload
+var chars      = [];     // [{char, pinyin}]
+var charStates = [];     // [{state:'idle'|'prog'|'err'|'done', mistakes:0}]
 var activeIdx  = 0;
 var writer     = null;
-var showContour = true;
-var showPinyin  = true;
-var logEntries  = [];
-var STORAGE_KEY = 'hanzidojo_history';
-var builderRows = []; // [{char, pinyin, wordBreakBefore}]
+var logEntries = [];
 
-// ==========================================================
+// Builder
+var bRows = []; // [{ch, py, wordBreak}]
+
+// ═══════════════════════════════════════════════════════════
 // BOOT
-// ==========================================================
-window.addEventListener('DOMContentLoaded', function() {
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function () {
+  loadPrefs();
+  applyAllPrefs();
   renderAIPrompt();
-  renderMenuList();
+  renderHistory();
   tryLoadHash();
 });
 
 window.addEventListener('hashchange', tryLoadHash);
 
+// ═══════════════════════════════════════════════════════════
+// PREFS
+// ═══════════════════════════════════════════════════════════
+function loadPrefs() {
+  try {
+    var stored = JSON.parse(localStorage.getItem(PREF_KEY));
+    if (stored) {
+      ['grid','contour','hint','pinyin'].forEach(function(k) {
+        if (typeof stored[k] === 'boolean') prefs[k] = stored[k];
+      });
+    }
+  } catch(e) {}
+}
+
+function savePrefs() {
+  localStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+}
+
+function applyAllPrefs() {
+  ['grid','contour','hint','pinyin'].forEach(function(k) { applyPref(k); });
+}
+
+function applyPref(key) {
+  var btn = document.getElementById('btn-' + key);
+  if (btn) btn.classList.toggle('on', prefs[key]);
+
+  if (key === 'hint') {
+    var hEl = document.getElementById('q-hint');
+    if (hEl) hEl.style.display = prefs.hint && hEl.textContent ? '' : 'none';
+  }
+  if (key === 'pinyin' && payload) renderBoxes();
+  if ((key === 'grid' || key === 'contour') && writer) {
+    buildWriter(chars[activeIdx].char);
+  }
+}
+
+function tbToggle(key) {
+  prefs[key] = !prefs[key];
+  savePrefs();
+  applyPref(key);
+  if (payload) {
+    var msg = key.charAt(0).toUpperCase() + key.slice(1) + ' ' + (prefs[key] ? 'enabled' : 'disabled');
+    log(msg, 'sys');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// HASH / LOAD
+// ═══════════════════════════════════════════════════════════
 function tryLoadHash() {
   var hash = location.hash.replace('#', '').trim();
   if (!hash) return;
   var data = null;
-  try { data = JSON.parse(decodeURIComponent(escape(atob(hash)))); } catch(e1) {
-    try { data = JSON.parse(atob(hash)); } catch(e2) {
-      console.warn('Cannot parse hash payload', e2); return;
-    }
+  try { data = JSON.parse(decodeURIComponent(escape(atob(hash)))); } catch(e) {
+    try { data = JSON.parse(atob(hash)); } catch(e2) { return; }
   }
-  if (data && data.question && Array.isArray(data.answer)) initQuestion(data);
+  if (data && data.question && data.answer) initQuiz(data);
 }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // QUIZ INIT
-// ==========================================================
-function initQuestion(data) {
-  payload    = data;
-  charStates = payload.answer.map(function() { return {state:'untouched', mistakes:0}; });
-  activeIdx  = 0;
+// ═══════════════════════════════════════════════════════════
+function initQuiz(data) {
+  payload = data;
   logEntries = [];
 
-  document.getElementById('no-payload').style.display = 'none';
+  // Parse answer: new schema uses string + pinyin array
+  // Also support legacy {char,pinyin} array
+  if (typeof data.answer === 'string') {
+    // New schema
+    var ansStr = data.answer;
+    var pinyins = Array.isArray(data.pinyin) ? data.pinyin : [];
+    chars = [];
+    var ci = 0;
+    for (var i = 0; i < ansStr.length; i++) {
+      var ch = ansStr[i];
+      if (ch === ' ') { chars.push({ char: ' ', pinyin: '' }); }
+      else { chars.push({ char: ch, pinyin: pinyins[ci] || '' }); ci++; }
+    }
+  } else if (Array.isArray(data.answer)) {
+    // Legacy schema
+    chars = data.answer.map(function(a) {
+      return typeof a === 'object' ? a : { char: a, pinyin: '' };
+    });
+  }
+
+  charStates = chars.map(function() { return { state: 'idle', mistakes: 0 }; });
+
+  // find first non-space
+  activeIdx = 0;
+  for (var j = 0; j < chars.length; j++) {
+    if (chars[j].char !== ' ') { activeIdx = j; break; }
+  }
+
+  // switch to quiz view
+  document.getElementById('landing').style.display = 'none';
   ['question-row','boxes-row','canvas-row','log-row'].forEach(function(id) {
     document.getElementById(id).style.display = '';
   });
 
-  document.getElementById('question-text').textContent = payload.question;
-  log('Loaded: "' + payload.question + '" (' + payload.answer.length + ' chars)', 'info');
+  document.getElementById('q-text').textContent = data.question;
+
+  var hEl = document.getElementById('q-hint');
+  if (data.hint) {
+    hEl.textContent = '&#128161; ' + data.hint;
+    hEl.style.display = prefs.hint ? '' : 'none';
+  } else {
+    hEl.textContent = '';
+    hEl.style.display = 'none';
+  }
+
+  var charCount = chars.filter(function(c) { return c.char !== ' '; }).length;
+  log('&#128218; Loaded: "' + data.question + '" \u2014 ' + charCount + ' character(s)', 'info');
+
   renderBoxes();
-  activateChar(0);
-  saveToHistory(payload);
+  activateChar(activeIdx);
+  saveHistory(payload);
 }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // BOXES
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 function renderBoxes() {
-  var container = document.getElementById('boxes-container');
-  container.innerHTML = '';
-  var groups = buildWordGroups();
+  var wrap = document.getElementById('boxes-wrap');
+  wrap.innerHTML = '';
 
-  payload.answer.forEach(function(item, idx) {
-    if (idx > 0 && groups[idx] === 'start') {
-      var gap = document.createElement('div');
-      gap.className = 'word-gap';
-      container.appendChild(gap);
+  chars.forEach(function(c, idx) {
+    if (c.char === ' ') {
+      var sep = document.createElement('div');
+      sep.className = 'word-sep';
+      wrap.appendChild(sep);
+      return;
     }
-    var box = document.createElement('div');
-    box.className = 'char-box state-untouched';
-    box.id = 'char-box-' + idx;
-    (function(i){ box.onclick = function(){ activateChar(i); }; })(idx);
 
+    var box   = document.createElement('div');
     var inner = document.createElement('div');
-    inner.className = 'char-box-inner';
-    inner.textContent = item.char;
-
     var badge = document.createElement('div');
-    badge.className = 'mistake-badge';
-    badge.id = 'badge-' + idx;
+    var pyLbl = document.createElement('div');
+
+    box.className   = 'cbox ' + boxClass(idx);
+    box.id          = 'cb-' + idx;
+    inner.className = 'cbox-inner';
+    badge.className = 'mbadge';
+    badge.id        = 'mbadge-' + idx;
+    pyLbl.className = 'cbox-pinyin';
+
+    var s = charStates[idx];
+    // Show character only if done, otherwise "?"
+    inner.textContent = s.state === 'done' ? c.char : '?';
+    if (s.mistakes > 0) badge.textContent = s.mistakes;
+    if (prefs.pinyin) pyLbl.textContent = c.pinyin || '';
+
     inner.appendChild(badge);
     box.appendChild(inner);
+    box.appendChild(pyLbl);
 
-    if (showPinyin) {
-      var py = document.createElement('div');
-      py.className = 'pinyin-label';
-      py.id = 'pinyin-' + idx;
-      py.textContent = item.pinyin || '';
-      box.appendChild(py);
-    }
-    container.appendChild(box);
+    (function(i) { box.onclick = function() { activateChar(i); }; })(idx);
+    wrap.appendChild(box);
   });
 }
 
-function buildWordGroups() {
-  var g = {};
-  if (!payload.words) return g;
-  payload.words.forEach(function(word) {
-    word.forEach(function(idx, pos) { g[idx] = pos === 0 ? 'start' : 'mid'; });
-  });
-  return g;
+function boxClass(idx) {
+  var s = charStates[idx];
+  var cls = 's-' + s.state;
+  if (idx === activeIdx) cls += ' active';
+  return cls;
 }
 
-function updateBoxState(idx) {
-  var s   = charStates[idx];
-  var box = document.getElementById('char-box-' + idx);
+function refreshBox(idx) {
+  var box = document.getElementById('cb-' + idx);
   if (!box) return;
-  box.className = 'char-box state-' + s.state + (idx === activeIdx ? ' active' : '');
-  var badge = document.getElementById('badge-' + idx);
+  var s = charStates[idx];
+  box.className = 'cbox ' + boxClass(idx);
+  var inner = box.querySelector('.cbox-inner');
+  // reveal char only when done
+  var textNode = inner.firstChild;
+  if (!textNode || textNode.nodeType !== 3) {
+    inner.insertBefore(document.createTextNode(''), inner.firstChild);
+    textNode = inner.firstChild;
+  }
+  textNode.textContent = s.state === 'done' ? chars[idx].char : '?';
+  var badge = document.getElementById('mbadge-' + idx);
   if (badge) badge.textContent = s.mistakes > 0 ? s.mistakes : '';
 }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // CANVAS / WRITER
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 function activateChar(idx) {
-  if (idx < 0 || idx >= payload.answer.length) return;
-  var prev = document.getElementById('char-box-' + activeIdx);
-  if (prev && activeIdx !== idx) prev.classList.remove('active');
+  if (idx < 0 || idx >= chars.length) return;
+  if (chars[idx].char === ' ') return;
+
+  var old = document.getElementById('cb-' + activeIdx);
+  if (old) old.classList.remove('active');
   activeIdx = idx;
-  updateBoxState(idx);
-  var item = payload.answer[idx];
-  document.getElementById('canvas-char-label').textContent =
-    item.char + '  ' + (item.pinyin || '') + '  [' + (idx+1) + '/' + payload.answer.length + ']';
-  buildWriter(item.char);
+  var cur = document.getElementById('cb-' + activeIdx);
+  if (cur) cur.classList.add('active');
+
+  var c = chars[idx];
+  document.getElementById('clabel').textContent =
+    c.char + '  ' + (c.pinyin || '') + '  [' + (idx + 1) + '/' + chars.length + ']';
+  buildWriter(c.char);
 }
 
-function buildWriter(char) {
-  document.getElementById('character-target-div').innerHTML = '';
-  var size = document.getElementById('canvas-wrapper').offsetWidth;
+function buildWriter(ch) {
+  document.getElementById('char-target').innerHTML = '';
+  var size = document.getElementById('canvas-wrap').offsetWidth;
   drawGrid(size);
 
-  writer = HanziWriter.create('character-target-div', char, {
-    width: size, height: size,
+  writer = HanziWriter.create('char-target', ch, {
+    width: size,
+    height: size,
     padding: Math.round(size * 0.07),
     showCharacter: false,
-    showOutline: showContour,
-    outlineColor: '#3a3a50',
+    showOutline: prefs.contour,
+    outlineColor: '#383850',
     drawingColor: '#e8c96d',
     strokeColor: '#e8c96d',
     highlightColor: '#5ccb8a',
@@ -590,352 +682,353 @@ function buildWriter(char) {
     strokeAnimationSpeed: 1,
   });
 
+  var idx = activeIdx;
   writer.quiz({
     onMistake: function(d) {
-      if (charStates[activeIdx].state !== 'done') {
-        charStates[activeIdx].state = 'error';
-        charStates[activeIdx].mistakes++;
-        updateBoxState(activeIdx);
+      if (charStates[idx].state !== 'done') {
+        charStates[idx].state = 'err';
+        charStates[idx].mistakes++;
+        refreshBox(idx);
       }
-      log('x Stroke ' + (d.strokeNum+1) + '  on stroke: ' + d.mistakesOnStroke +
-        '  total: ' + d.totalMistakes + '  remaining: ' + d.strokesRemaining, 'err');
+      log('&#10060; [' + ch + '] stroke ' + d.strokeNum + ' mistake (total: ' + d.totalMistakes + ')', 'err');
     },
     onCorrectStroke: function(d) {
-      if (charStates[activeIdx].state !== 'done') {
-        charStates[activeIdx].state = 'in-progress';
-        updateBoxState(activeIdx);
+      if (charStates[idx].state !== 'done') {
+        charStates[idx].state = 'prog';
+        refreshBox(idx);
       }
-      log('+ Stroke ' + (d.strokeNum+1) + '  total: ' + d.totalMistakes +
-        '  remaining: ' + d.strokesRemaining, 'ok');
+      log('&#9989; [' + ch + '] stroke ' + d.strokeNum + ' correct!', 'ok');
     },
     onComplete: function(d) {
-      charStates[activeIdx].state = 'done';
-      updateBoxState(activeIdx);
-      var acc = d.totalMistakes === 0 ? 'Perfect!' : d.totalMistakes + ' mistake(s)';
-      log('* "' + d.character + '" complete — ' + acc, 'done');
-      var next = activeIdx + 1;
-      if (next < payload.answer.length) setTimeout(function(){ activateChar(next); }, 800);
-      else setTimeout(checkAllDone, 800);
+      charStates[idx].state = 'done';
+      refreshBox(idx);
+      log('&#127881; [' + ch + '] COMPLETED! Total mistakes: ' + d.totalMistakes, 'done');
+      // auto-advance to next non-space
+      var next = idx + 1;
+      while (next < chars.length && chars[next].char === ' ') next++;
+      if (next < chars.length) setTimeout(function() { activateChar(next); }, 700);
+      else setTimeout(checkComplete, 700);
     }
   });
 }
 
 function drawGrid(size) {
-  var canvas = document.getElementById('canvas-grid');
-  canvas.width = size; canvas.height = size;
-  canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
-  var ctx = canvas.getContext('2d');
+  var c   = document.getElementById('cgrid');
+  c.width = size; c.height = size;
+  c.style.width = size + 'px'; c.style.height = size + 'px';
+  var ctx = c.getContext('2d');
   ctx.clearRect(0, 0, size, size);
-  ctx.strokeStyle = '#1e1e28'; ctx.lineWidth = 1;
+
+  if (!prefs.grid) return;
+
+  ctx.strokeStyle = '#1d1d28'; ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(size/2, 0); ctx.lineTo(size/2, size);
-  ctx.moveTo(0, size/2); ctx.lineTo(size, size/2);
+  ctx.moveTo(size/2, 0);    ctx.lineTo(size/2, size);
+  ctx.moveTo(0, size/2);    ctx.lineTo(size, size/2);
   ctx.stroke();
+
   ctx.strokeStyle = '#191922';
-  ctx.setLineDash([4, 6]);
+  ctx.setLineDash([4, 7]);
   ctx.beginPath();
-  ctx.moveTo(0,0); ctx.lineTo(size,size);
-  ctx.moveTo(size,0); ctx.lineTo(0,size);
+  ctx.moveTo(0, 0);     ctx.lineTo(size, size);
+  ctx.moveTo(size, 0);  ctx.lineTo(0, size);
   ctx.stroke();
   ctx.setLineDash([]);
 }
 
-function checkAllDone() {
-  if (charStates.every(function(s){ return s.state === 'done'; })) {
-    var total = charStates.reduce(function(a,s){ return a + s.mistakes; }, 0);
-    log('== Session complete! Total mistakes: ' + total + ' ==', 'done');
+function checkComplete() {
+  var allDone = charStates.every(function(s) { return s.state === 'done' || chars[charStates.indexOf(s)] && chars[charStates.indexOf(s)].char === ' '; });
+  // simpler check
+  var nonSpace = chars.filter(function(c) { return c.char !== ' '; });
+  var doneCount = 0;
+  chars.forEach(function(c, i) { if (c.char !== ' ' && charStates[i].state === 'done') doneCount++; });
+  if (doneCount === nonSpace.length) {
+    var total = charStates.reduce(function(a, s) { return a + s.mistakes; }, 0);
+    log('&#127942; SESSION COMPLETE! Total mistakes: ' + total, 'done');
   }
 }
 
 window.addEventListener('resize', function() {
-  if (payload && writer) buildWriter(payload.answer[activeIdx].char);
+  if (payload && writer) buildWriter(chars[activeIdx].char);
 });
 
-// ==========================================================
-// TOGGLES
-// ==========================================================
-function toggleContour(btn) {
-  showContour = !showContour;
-  btn.classList.toggle('active', showContour);
-  if (payload) buildWriter(payload.answer[activeIdx].char);
-}
-function togglePinyin(btn) {
-  showPinyin = !showPinyin;
-  btn.classList.toggle('active', showPinyin);
-  if (payload) renderBoxes();
-}
-
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // LOG
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 function log(msg, type) {
   type = type || 'info';
-  var time = new Date().toTimeString().slice(0,8);
-  logEntries.push({time:time, msg:msg, type:type});
-  var c = document.getElementById('log-content');
-  var el = document.createElement('div');
-  el.className = 'log-entry';
-  el.innerHTML = '<span class="log-time">' + time + '</span>' +
-    '<span class="log-msg ' + type + '">' + esc(msg) + '</span>';
-  c.appendChild(el);
-  c.scrollTop = c.scrollHeight;
+  var now  = new Date();
+  var h    = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  var time = h + ':' + pad(m) + ':' + pad(s) + ' ' + ampm;
+  logEntries.push({ time: time, msg: msg, type: type });
+
+  var body = document.getElementById('log-body');
+  var el   = document.createElement('div');
+  el.className = 'le';
+  el.innerHTML = '<span class="lt">[' + time + ']</span><span class="lm ' + type + '">' + msg + '</span>';
+  body.appendChild(el);
+  body.scrollTop = body.scrollHeight;
 }
+
+function pad(n) { return n < 10 ? '0' + n : n; }
 
 function copyLog() {
   if (!payload) return;
-  var header = 'HanziDojo Session Log\nQuestion: ' + payload.question +
-    '\nChars: ' + payload.answer.map(function(a){ return a.char; }).join('') +
-    '\n' + '-'.repeat(50) + '\n';
-  var lines = logEntries.map(function(e){ return '['+e.time+'] '+e.msg; }).join('\n');
-  var footer = '\n' + '-'.repeat(50) +
-    '\nTotal mistakes: ' + charStates.reduce(function(a,s){ return a+s.mistakes; },0);
+  var header = 'HanziDojo Session Log\nQuestion: ' + payload.question + '\n' +
+    'Answer: ' + (typeof payload.answer === 'string' ? payload.answer : chars.map(function(c){ return c.char; }).join('')) + '\n' +
+    '='.repeat(50) + '\n';
+  var lines  = logEntries.map(function(e) { return '[' + e.time + '] ' + e.msg.replace(/<[^>]+>/g,''); }).join('\n');
+  var total  = charStates.reduce(function(a, s) { return a + s.mistakes; }, 0);
+  var footer = '\n' + '='.repeat(50) + '\nTotal mistakes: ' + total;
   navigator.clipboard.writeText(header + lines + footer);
-  var btn = document.getElementById('copy-log-btn');
+  var btn = document.getElementById('copy-log');
   btn.textContent = 'Copied!';
-  setTimeout(function(){ btn.textContent = 'Copy All'; }, 1800);
+  setTimeout(function() { btn.textContent = 'Copy All'; }, 1800);
 }
 
-// ==========================================================
-// HISTORY / MENU
-// ==========================================================
-function saveToHistory(data) {
-  var h = getHistory();
+// ═══════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════
+function saveHistory(data) {
+  var h   = getHistory();
   var key = JSON.stringify(data);
-  h = h.filter(function(x){ return JSON.stringify(x) !== key; });
+  h = h.filter(function(x) { return JSON.stringify(x) !== key; });
   h.unshift(data);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(h.slice(0,20)));
-  renderMenuList();
+  localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 25)));
+  renderHistory();
 }
+
 function getHistory() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch(e) { return []; }
+  try { return JSON.parse(localStorage.getItem(HIST_KEY)) || []; } catch(e) { return []; }
 }
-function renderMenuList() {
+
+function renderHistory() {
   var list = document.getElementById('menu-list');
-  var h = getHistory();
+  var h    = getHistory();
   list.innerHTML = '';
   if (!h.length) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:12px;font-family:\'JetBrains Mono\',monospace">No history yet</div>';
+    list.innerHTML = '<div id="menu-empty">No history yet</div>';
     return;
   }
   h.forEach(function(item, i) {
-    var el = document.createElement('div');
-    el.className = 'menu-item';
-    el.innerHTML = '<div class="mi-q">#' + (i+1) + '</div>' +
-      '<div class="mi-en">' + esc(item.question) + '</div>' +
-      '<div class="mi-zh">' + item.answer.map(function(a){ return a.char; }).join('') + '</div>';
-    (function(idx, itm){ el.onclick = function(){ loadHistoryItem(idx, itm); }; })(i, item);
+    var el  = document.createElement('div');
+    el.className = 'm-item';
+    var ansStr = typeof item.answer === 'string'
+      ? item.answer
+      : item.answer.map(function(a){ return a.char || a; }).join('');
+    el.innerHTML =
+      '<div class="mq">#' + (i+1) + '</div>' +
+      '<div class="men">' + esc(item.question) + '</div>' +
+      '<div class="mzh">' + esc(ansStr) + '</div>';
+    (function(itm, idx) {
+      el.onclick = function() {
+        var h2 = getHistory();
+        h2.splice(idx, 1);
+        localStorage.setItem(HIST_KEY, JSON.stringify(h2));
+        location.hash = safeB64(JSON.stringify(itm));
+        closeMenu();
+      };
+    })(item, i);
     list.appendChild(el);
   });
 }
-function loadHistoryItem(idx, item) {
-  var h = getHistory();
-  h.splice(idx, 1);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
-  location.hash = safeB64(JSON.stringify(item));
-  closeMenu();
-}
+
 function toggleMenu() { document.getElementById('menu-overlay').classList.toggle('open'); }
 function closeMenu()  { document.getElementById('menu-overlay').classList.remove('open'); }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // AI PROMPT
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 function renderAIPrompt() {
-  var appUrl = location.origin + location.pathname;
-  var lines = [
-    'You are helping me practice Chinese (Mandarin) character writing with the HanziDojo app.',
+  var url = location.origin + location.pathname;
+  var txt = [
+    'You are an AI assistant helping a user practice Chinese characters using the HanziDojo app.',
     '',
-    'App URL: ' + appUrl,
+    'To generate a quiz link, create a JSON object with these fields:',
+    '- "question": The English question/prompt (e.g., "How do you say \'Hello\' in Chinese?")',
+    '- "answer": The Chinese answer as a string (e.g., "\u4f60\u597d")',
+    '- "pinyin": Array of pinyin for each Chinese character (e.g., ["n\u01d0", "h\u01ceo"])',
+    '- "hint": Optional hint text',
     '',
-    'To create a question, produce a link:',
-    '  ' + appUrl + '#BASE64_PAYLOAD',
+    'Then base64 encode the JSON and append it as a hash to this URL:',
+    url + '#<base64_encoded_json>',
     '',
-    'The payload is safeB64(JSON.stringify(obj)) where safeB64 = btoa(unescape(encodeURIComponent(str))),',
-    'and obj is:',
+    'Use this encoding: btoa(unescape(encodeURIComponent(JSON.stringify(payload))))',
+    '',
+    'Example payload before encoding:',
     '{',
-    '  "question": "English prompt shown to the learner",',
-    '  "answer": [',
-    '    { "char": "\u4f60", "pinyin": "n\u01d0" },',
-    '    { "char": "\u597d", "pinyin": "h\u01ceo" },',
-    '    { "char": "\u5417", "pinyin": "ma" }',
-    '  ],',
-    '  "words": [[0,1],[2]]',
+    '  "question": "How do you say \'Thank you\' in Chinese?",',
+    '  "answer": "\u8c22\u8c22",',
+    '  "pinyin": ["xi\xe8", "xie"],',
+    '  "hint": "Two identical characters"',
     '}',
     '',
     'Rules:',
-    '- answer: flat array of individual hanzi with tone-marked pinyin',
-    '- words: groups character indices into words (adds visual spacing)',
-    '- Encode: btoa(unescape(encodeURIComponent(JSON.stringify(obj))))',
+    '- Only include Chinese characters in "answer" that should be drawn (hanzi)',
+    '- Spaces in the answer string will be rendered as word separators',
+    '- Pinyin array length must match the number of hanzi characters (not spaces)',
+    '- The app tracks stroke-by-stroke progress and mistakes',
+    '- Users can copy their session log to share back with you for analysis',
     '',
     'Please create a suitable beginner question now and reply ONLY with the full link.'
-  ];
-  document.getElementById('ai-prompt-box').value = lines.join('\n');
+  ].join('\n');
+  document.getElementById('ai-prompt').value = txt;
 }
 
-function copyPrompt() {
-  navigator.clipboard.writeText(document.getElementById('ai-prompt-box').value);
-  var btn = document.getElementById('copy-prompt-btn');
+function copyAI() {
+  navigator.clipboard.writeText(document.getElementById('ai-prompt').value);
+  var btn = document.getElementById('copy-ai-btn');
   btn.textContent = 'Copied!';
-  setTimeout(function(){ btn.textContent = 'Copy AI Prompt'; }, 1800);
+  setTimeout(function() { btn.textContent = 'Copy AI Prompt'; }, 1800);
 }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // BUILDER
-// ==========================================================
-function addCharRow(char, pinyin, wordBreak) {
-  builderRows.push({ char: char||'', pinyin: pinyin||'', wordBreakBefore: !!wordBreak });
-  renderCharRows();
-  builderUpdate();
+// ═══════════════════════════════════════════════════════════
+function addRow(ch, py, wb) {
+  bRows.push({ ch: ch || '', py: py || '', wb: !!wb });
+  renderRows();
+  bUpdate();
   setTimeout(function() {
-    var inputs = document.querySelectorAll('.ci');
-    if (inputs.length) inputs[inputs.length-1].focus();
+    var els = document.querySelectorAll('.ans-char');
+    if (els.length) els[els.length - 1].focus();
   }, 30);
 }
 
-function removeCharRow(i) {
-  builderRows.splice(i, 1);
-  renderCharRows();
-  builderUpdate();
+function removeRow(i) {
+  bRows.splice(i, 1);
+  renderRows();
+  bUpdate();
 }
 
-function toggleWB(i) {
-  builderRows[i].wordBreakBefore = !builderRows[i].wordBreakBefore;
-  renderCharRows();
-  builderUpdate();
-}
-
-function renderCharRows() {
-  var container = document.getElementById('char-rows');
-  container.innerHTML = '';
-  builderRows.forEach(function(row, i) {
+function renderRows() {
+  var c = document.getElementById('ans-rows');
+  c.innerHTML = '';
+  bRows.forEach(function(row, i) {
     var div = document.createElement('div');
-    div.className = 'crow';
-
-    var num = document.createElement('span');
-    num.className = 'crow-num';
-    num.textContent = i + 1;
-
-    var wb = document.createElement('button');
-    wb.className = 'wb-btn' + (row.wordBreakBefore ? ' on' : '');
-    wb.title = 'Word boundary before this character';
-    wb.textContent = '\u27B7';
-    (function(idx){ wb.onclick = function(){ toggleWB(idx); }; })(i);
+    div.className = 'ans-row';
 
     var ci = document.createElement('input');
-    ci.className = 'ci';
+    ci.className = 'ans-char';
     ci.maxLength = 1;
-    ci.value = row.char;
+    ci.value = row.ch;
     ci.placeholder = '\u5b57';
-    (function(idx){
+    (function(idx) {
       ci.oninput = function() {
-        builderRows[idx].char = this.value;
-        builderUpdate();
-        // auto-advance to pinyin field
-        var pins = document.querySelectorAll('.pi');
-        if (pins[idx]) setTimeout(function(){ pins[idx].focus(); }, 20);
+        bRows[idx].ch = this.value;
+        bUpdate();
+        var pins = document.querySelectorAll('.ans-pin');
+        if (pins[idx]) setTimeout(function() { pins[idx].focus(); }, 15);
       };
     })(i);
 
     var pi = document.createElement('input');
-    pi.className = 'pi';
-    pi.value = row.pinyin;
+    pi.className = 'ans-pin';
+    pi.value = row.py;
     pi.placeholder = 'p\u012bny\u012bn';
-    (function(idx){
-      pi.oninput = function() { builderRows[idx].pinyin = this.value; builderUpdate(); };
+    (function(idx) {
+      pi.oninput = function() { bRows[idx].py = this.value; bUpdate(); };
       pi.onkeydown = function(e) {
-        if ((e.key === 'Tab' || e.key === 'Enter') && idx === builderRows.length - 1) {
-          e.preventDefault();
-          addCharRow();
+        if ((e.key === 'Tab' || e.key === 'Enter') && idx === bRows.length - 1) {
+          e.preventDefault(); addRow();
         }
       };
     })(i);
 
     var del = document.createElement('button');
-    del.className = 'del-r';
-    del.title = 'Remove';
+    del.className = 'del-btn';
     del.textContent = '\xd7';
-    (function(idx){ del.onclick = function(){ removeCharRow(idx); }; })(i);
+    (function(idx) { del.onclick = function() { removeRow(idx); }; })(i);
 
-    div.appendChild(num);
-    div.appendChild(wb);
     div.appendChild(ci);
     div.appendChild(pi);
     div.appendChild(del);
-    container.appendChild(div);
+    c.appendChild(div);
   });
 }
 
-function doSplitPaste() {
+function doPaste() {
   var raw = document.getElementById('b-paste').value.trim();
   if (!raw) return;
-  var wordBreakNext = false;
-  var chars = Array.from(raw);
-  chars.forEach(function(c) {
-    if (c === ' ' || c === '\u3000') { wordBreakNext = true; return; }
-    addCharRow(c, '', wordBreakNext && builderRows.length > 0);
-    wordBreakNext = false;
+  var wb = false;
+  Array.from(raw).forEach(function(ch) {
+    if (ch === ' ' || ch === '\u3000') { wb = true; return; }
+    // push space marker if word break needed
+    if (wb && bRows.length > 0) bRows.push({ ch: ' ', py: '', wb: false });
+    addRow(ch, '', false);
+    wb = false;
   });
   document.getElementById('b-paste').value = '';
-  builderUpdate();
+  bUpdate();
 }
 
-function builderBuildPayload() {
-  var question = document.getElementById('b-question').value.trim();
-  var valid = builderRows.filter(function(r){ return r.char.trim(); });
+function bBuildPayload() {
+  var question = document.getElementById('b-q').value.trim();
+  var hint     = document.getElementById('b-hint').value.trim();
+  var valid    = bRows.filter(function(r) { return r.ch.trim(); });
   if (!question || valid.length === 0) return null;
 
-  var answer = valid.map(function(r){ return { char: r.char.trim(), pinyin: r.pinyin.trim() }; });
-
-  var words = [];
-  var cur = [];
-  valid.forEach(function(r, i) {
-    if (i > 0 && r.wordBreakBefore && cur.length > 0) { words.push(cur); cur = []; }
-    cur.push(i);
+  // build answer string and pinyin array
+  var answerStr = '';
+  var pinyinArr = [];
+  var prevSpace = false;
+  valid.forEach(function(r) {
+    if (r.ch === ' ') {
+      if (!prevSpace) answerStr += ' ';
+      prevSpace = true;
+    } else {
+      answerStr += r.ch;
+      pinyinArr.push(r.py);
+      prevSpace = false;
+    }
   });
-  if (cur.length) words.push(cur);
 
-  return { question: question, answer: answer, words: words };
+  var obj = { question: question, answer: answerStr, pinyin: pinyinArr };
+  if (hint) obj.hint = hint;
+  return obj;
 }
 
-function builderUpdate() {
-  var p       = builderBuildPayload();
-  var preview = document.getElementById('bpreview');
-  var startBtn= document.getElementById('start-btn');
-  var linkBtn = document.getElementById('copy-link-btn');
-  var errEl   = document.getElementById('berr');
+function bUpdate() {
+  var p    = bBuildPayload();
+  var pre  = document.getElementById('bpreview');
+  var sbtn = document.getElementById('start-btn');
+  var lbtn = document.getElementById('copy-link');
+  var err  = document.getElementById('berr');
 
   if (!p) {
-    preview.textContent = '\u2014 fill in the fields above \u2014';
-    startBtn.disabled = true;
-    linkBtn.disabled  = true;
-    errEl.textContent = '';
+    pre.textContent = '\u2014 fill in the fields above \u2014';
+    sbtn.disabled = true;
+    lbtn.disabled = true;
+    err.textContent = '';
     return;
   }
-  preview.textContent = JSON.stringify(p, null, 2);
-  startBtn.disabled = false;
-  linkBtn.disabled  = false;
-  errEl.textContent = '';
+  pre.textContent = JSON.stringify(p, null, 2);
+  sbtn.disabled = false;
+  lbtn.disabled = false;
+  err.textContent = '';
 }
 
-function builderSubmit() {
-  var p = builderBuildPayload();
+function bSubmit() {
+  var p = bBuildPayload();
   if (!p) return;
   location.hash = safeB64(JSON.stringify(p));
 }
 
-function builderCopyLink() {
-  var p = builderBuildPayload();
+function bCopyLink() {
+  var p = bBuildPayload();
   if (!p) return;
   var url = location.origin + location.pathname + '#' + safeB64(JSON.stringify(p));
   navigator.clipboard.writeText(url);
-  var btn = document.getElementById('copy-link-btn');
+  var btn = document.getElementById('copy-link');
   btn.textContent = '\u2713';
-  setTimeout(function(){ btn.textContent = '\uD83D\uDD17'; }, 1800);
+  setTimeout(function() { btn.textContent = '\uD83D\uDD17'; }, 1800);
 }
 
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 // UTILS
-// ==========================================================
+// ═══════════════════════════════════════════════════════════
 function safeB64(str) {
   return btoa(unescape(encodeURIComponent(str)));
 }
