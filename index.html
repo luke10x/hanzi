@@ -124,4 +124,293 @@
         </div>
     </div>
 </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Hanzi Quiz – Hidden Character</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Noto Sans', sans-serif;
+        }
+        body {
+            background: #f0f2f5;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+        .container {
+            max-width: 850px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #e6f0ff;
+            color: #1e40af;
+            border-radius: 40px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin: 1rem 0 1.5rem 0;
+        }
+        button:hover {
+            background: #2563eb;
+            transform: scale(0.97);
+        }
+        .quiz-area {
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        .quiz-link {
+            display: inline-block;
+            background: #0f172a;
+            color: white;
+            text-decoration: none;
+            padding: 0.8rem 2rem;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            transition: 0.2s;
+            font-family: monospace;
+        }
+        .quiz-link:hover {
+            background: #1e293b;
+            transform: scale(1.02);
+        }
+        .info {
+            font-size: 0.85rem;
+            color: #475569;
+            margin-top: 1rem;
+        }
+        .stats {
+            background: #eef2ff;
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            display: inline-block;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+        hr {
+            margin: 1.5rem 0;
+            border: none;
+            border-top: 1px solid #e2e8f0;
+        }
+        .instructions {
+            background: #fefce8;
+            border-left: 5px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 16px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            margin-top: 1rem;
+        }
+        textarea {
+            width: 100%;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            padding: 0.8rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #fefce8;
+            resize: vertical;
+        }
+        .footer {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎲 Random Hanzi Quiz <span class="badge">???? link hides the character</span></h1>
+    <p>Click the button below – a random word from our collection is selected.  
+    You will see only a <strong>????</strong> link. Open the link to discover which character you must write in Hanzi Writer.</p>
+
+    <button id="randomBtn">🔀 Pick random word & generate ???? link</button>
+    <span id="stats" class="stats">ready</span>
+
+    <div class="quiz-area" id="quizArea">
+        <div id="linkContainer">
+            <p style="color: #64748b;">✨ Press the button above to start</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <details>
+        <summary><strong>📘 Instructions for AI chat agent (how to format a CSV collection)</strong></summary>
+        <div class="instructions">
+            <p>Below is a ready‑to‑copy instruction block. You can paste this into an AI chat to explain the CSV format required by the quiz tool:</p>
+            <textarea id="instructionText" rows="8" readonly style="font-family: monospace; background:#f1f5f9;"></textarea>
+        </div>
+    </details>
+    <div class="footer">
+        ✅ The link uses proper UTF‑8 base64 encoding. After practicing, copy the session log from Hanzi Writer and share with your tutor.
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 1. Hardcoded collection (all phrases, words, radicals we studied)
+    // --------------------------------------------------------------
+    const collection = [
+        { chinese: "首页", pinyinRaw: "shǒu yè", english: "Homepage" },
+        { chinese: "发现", pinyinRaw: "fā xiàn", english: "Discover" },
+        { chinese: "消息", pinyinRaw: "xiāo xi", english: "Message" },
+        { chinese: "我的", pinyinRaw: "wǒ de", english: "My / Mine" },
+        { chinese: "设置", pinyinRaw: "shè zhì", english: "Settings" },
+        { chinese: "加油", pinyinRaw: "jiā yóu", english: "Keep going! / Add fuel" },
+        { chinese: "你好", pinyinRaw: "nǐ hǎo", english: "Hello" },
+        { chinese: "晚安", pinyinRaw: "wǎn ān", english: "Good night" },
+        { chinese: "谢谢", pinyinRaw: "xiè xie", english: "Thank you" },
+        { chinese: "帮助", pinyinRaw: "bāng zhù", english: "Help" },
+        { chinese: "嗨", pinyinRaw: "hāi", english: "Hi" },
+        { chinese: "登录", pinyinRaw: "dēng lù", english: "Log in" },
+        { chinese: "最近", pinyinRaw: "zuì jìn", english: "Recently" },
+        { chinese: "对话", pinyinRaw: "duì huà", english: "Dialogue" },
+        { chinese: "作品", pinyinRaw: "zuò pǐn", english: "Art work" },
+        { chinese: "智能体", pinyinRaw: "zhì néng tǐ", english: "AI agent" },
+        { chinese: "点击", pinyinRaw: "diǎn jī", english: "Click" },
+        { chinese: "聊过", pinyinRaw: "liáo guò", english: "Have chatted" },
+        { chinese: "精选", pinyinRaw: "jīng xuǎn", english: "Featured selection" },
+        { chinese: "学习", pinyinRaw: "xué xí", english: "To study" },
+        { chinese: "写作", pinyinRaw: "xiě zuò", english: "Writing (activity)" },
+        { chinese: "娱乐", pinyinRaw: "yú lè", english: "Entertainment" },
+        { chinese: "我", pinyinRaw: "wǒ", english: "I / me" },
+        { chinese: "你", pinyinRaw: "nǐ", english: "you" },
+        { chinese: "好", pinyinRaw: "hǎo", english: "good" },
+        { chinese: "谢", pinyinRaw: "xiè", english: "thank" },
+        { chinese: "道", pinyinRaw: "dào", english: "road / way" },
+        { chinese: "热", pinyinRaw: "rè", english: "hot" },
+        { chinese: "孤", pinyinRaw: "gū", english: "lonely" },
+        { chinese: "球", pinyinRaw: "qiú", english: "ball" },
+        { chinese: "衜", pinyinRaw: "dào", english: "ancient variant of 道" },
+        { chinese: "氵", pinyinRaw: "sān diǎn shuǐ", english: "water radical" },
+        { chinese: "灬", pinyinRaw: "sì diǎn dǐ", english: "fire radical (4 dots)" }
+    ];
+
+    // Helper: robust UTF-8 → base64
+    function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    // Build Hanzi Writer quiz URL from an item
+    function buildQuizUrl(item) {
+        const pinyinArray = item.pinyinRaw.split(/\s+/).filter(p => p.length > 0);
+        if (pinyinArray.length === 0) return null;
+        const jsonObj = {
+            question: item.english,
+            answer: item.chinese,
+            pinyin: pinyinArray
+        };
+        try {
+            const jsonString = JSON.stringify(jsonObj);
+            const base64 = utf8ToBase64(jsonString);
+            return `https://luke10x.dev/hanzi/kimi.html#${base64}`;
+        } catch(e) {
+            console.error("Encoding error for", item.chinese, e);
+            return null;
+        }
+    }
+
+    // Pick random item, generate link, display only "????" as link text
+    function pickRandomAndDisplay() {
+        if (!collection.length) {
+            document.getElementById('linkContainer').innerHTML = `<p style="color:#b91c1c;">Error: No words loaded.</p>`;
+            document.getElementById('stats').textContent = `0 entries`;
+            return;
+        }
+        const randomIndex = Math.floor(Math.random() * collection.length);
+        const randomItem = collection[randomIndex];
+        const url = buildQuizUrl(randomItem);
+        if (!url) {
+            document.getElementById('linkContainer').innerHTML = `<p style="color:#b91c1c;">❌ Failed to generate link for "${randomItem.chinese}". Check pinyin format.</p>`;
+            document.getElementById('stats').textContent = `${collection.length} entries (failed on one)`;
+            return;
+        }
+        // Show only a link with "????" – no Chinese, no pinyin, no English
+        document.getElementById('linkContainer').innerHTML = `
+            <a href="${url}" target="_blank" class="quiz-link">????</a>
+            <div class="info">🔒 The character is hidden. Click "????" to open Hanzi Writer and discover what you need to write.</div>
+        `;
+        document.getElementById('stats').textContent = `${collection.length} entries | last pick: random`;
+    }
+
+    // Set up instructions textarea for AI chat agent
+    function setInstructionText() {
+        const instruction = `=== INSTRUCTIONS FOR AI CHAT AGENT ===
+To create a CSV collection for the Random Hanzi Quiz tool, use the following exact format:
+
+CSV columns (case-sensitive):
+Chinese,Pinyin,English,Notes(optional)
+
+Rules:
+- "Chinese" : the Chinese character(s) (e.g., 你好, 学习, 我)
+- "Pinyin" : space-separated pinyin with tone marks or numbers (e.g., "nǐ hǎo" or "ni3 hao3")
+- "English" : plain English meaning
+- You can add a fourth "Notes" column but it is ignored by the quiz.
+
+Example CSV rows:
+首页,shǒu yè,Homepage
+发现,fā xiàn,Discover
+你好,nǐ hǎo,Hello
+谢谢,xiè xie,Thank you
+
+The quiz tool picks a random row from the CSV, generates a hidden link, and only shows "????" to the user.
+To integrate your own wordlist, replace the 'collection' array in the JavaScript with a parsed version of your CSV.
+
+If you want to edit the CSV externally, you can paste it into the tool's editable textarea (if present).
+For a static version, embed the items directly as shown in this HTML.
+
+End of instructions.`;
+        document.getElementById('instructionText').value = instruction;
+    }
+
+    // Initialize: set button listener, stats, instructions
+    function init() {
+        document.getElementById('randomBtn').addEventListener('click', pickRandomAndDisplay);
+        document.getElementById('stats').textContent = `${collection.length} entries ready`;
+        setInstructionText();
+        // No automatic pick on load
+        document.getElementById('linkContainer').innerHTML = `<p style="color: #64748b;">✨ Press "Pick random word & generate ???? link" to start</p>`;
+    }
+    init();
+</script>
+</body>
 </html>
