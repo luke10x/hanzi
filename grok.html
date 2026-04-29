@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Hanzi Practice</title>
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+  <style>
+    :root { --accent: #0066cc; }
+    body {
+      margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif;
+      background: #f8f9fa; color: #222; display: flex; flex-direction: column; height: 100dvh; overflow: hidden;
+    }
+    header {
+      background: white; border-bottom: 1px solid #ddd; padding: 10px 12px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    }
+    .burger { font-size: 28px; cursor: pointer; padding: 4px 10px; }
+    h1 { margin: 0; font-size: 1.25em; }
+    button {
+      padding: 8px 14px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer;
+    }
+    button.primary { background: var(--accent); color: white; border: none; font-weight: 500; }
+    button:hover { opacity: 0.95; }
+
+    /* Welcome / Creator Screen */
+    .welcome {
+      flex: 1; padding: 20px; overflow-y: auto; background: white;
+    }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 6px; font-weight: 600; color: #333; }
+    input, textarea {
+      width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 1rem;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+
+    .char-list { margin: 10px 0; }
+    .char-item {
+      display: flex; gap: 8px; margin-bottom: 10px; align-items: center;
+      background: #f9f9f9; padding: 12px; border-radius: 8px;
+    }
+    .char-item input { flex: 1; }
+
+    /* Practice Mode */
+    .practice-mode .welcome { display: none !important; }
+    .welcome { display: block; }
+
+    .question-row {
+      padding: 12px 16px; background: white; border-bottom: 1px solid #ddd; font-size: 1.1em;
+    }
+    .answer-row {
+      padding: 12px 16px; background: white; border-bottom: 1px solid #ddd;
+      overflow-x: auto; white-space: nowrap; display: flex; gap: 20px;
+    }
+    .char-box {
+      display: inline-flex; flex-direction: column; align-items: center; cursor: pointer;
+      min-width: 68px;
+    }
+    .box-canvas {
+      width: 64px; height: 64px; border: 2px solid #ddd; border-radius: 8px; background: white;
+      position: relative;
+    }
+    .box-canvas.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,102,204,0.2); }
+    .box-canvas.completed { border-color: #28a745; }
+    .box-canvas.partial { border-color: #ffc107; }
+    .pinyin { font-size: 0.78em; margin-top: 4px; color: #555; }
+
+    .drawing-area {
+      flex: 1; display: flex; justify-content: center; align-items: center; background: #fafafa; padding: 12px;
+    }
+    #main-canvas-container {
+      border: 3px solid #333; background: white; box-shadow: 0 4px 25px rgba(0,0,0,0.15);
+      max-width: 100%; max-height: 100%;
+    }
+
+    .log-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 6px 12px; background: #333; color: white; font-size: 0.9em;
+    }
+    .log-row {
+      height: 170px; background: #1e1e1e; color: #0f0; font-family: monospace; font-size: 0.85em;
+      overflow-y: auto; padding: 10px; line-height: 1.4;
+    }
+
+    .menu {
+      position: fixed; top: 0; left: 0; bottom: 0; width: 280px; background: white;
+      box-shadow: 2px 0 15px rgba(0,0,0,0.2); transform: translateX(-100%); transition: transform 0.3s ease;
+      z-index: 1000; padding: 20px; overflow-y: auto;
+    }
+    .menu.open { transform: translateX(0); }
+    .menu-item {
+      padding: 12px; border-bottom: 1px solid #eee; cursor: pointer;
+    }
+    .menu-item:hover { background: #f0f8ff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="burger" id="burger">☰</div>
+  <h1>Hanzi Practice</h1>
+  <button id="new-practice-btn" style="margin-left: auto;">New Practice</button>
+</header>
+
+<!-- Welcome / Creator Screen -->
+<div class="welcome" id="welcome-screen">
+  <h2>Create New Practice</h2>
+  
+  <div class="form-group">
+    <label>Question / Instruction</label>
+    <textarea id="input-question" placeholder="Write these words in Chinese:"></textarea>
+  </div>
+
+  <div class="form-group">
+    <label>Characters to Practice</label>
+    <div id="char-list" class="char-list"></div>
+    <button type="button" onclick="addCharField()" style="margin-top: 8px;">+ Add Character</button>
+  </div>
+
+  <button onclick="generateAndLoadPractice()" class="primary" style="width:100%; padding: 14px; font-size: 1.1em;">
+    Generate Link & Start Practicing
+  </button>
+
+  <p style="margin-top: 20px; font-size: 0.9em; color: #666;">
+    Tip: You can also ask your AI assistant to generate a full practice link for you.
+  </p>
+</div>
+
+<!-- Practice Interface -->
+<div class="question-row" id="question-row"></div>
+<div class="answer-row" id="answer-row"></div>
+
+<div class="drawing-area">
+  <div id="main-canvas-container"></div>
+</div>
+
+<div class="log-header">
+  <span>Activity Log</span>
+  <button id="copy-log">Copy All</button>
+</div>
+<div class="log-row" id="log"></div>
+
+<!-- Side Menu -->
+<div class="menu" id="menu">
+  <h2>Previous Practices</h2>
+  <div id="history-list"></div>
+</div>
+
+<script>
+// ============== UTF-8 Safe Base64 ==============
+function utf8ToBase64(str) {
+  return btoa(encodeURIComponent(str));
+}
+
+function base64ToUtf8(str) {
+  return decodeURIComponent(atob(str));
+}
+
+// ============== STATE ==============
+let currentWriter = null;
+let activeBoxIndex = 0;
+let boxes = [];
+let history = [];
+let isQuizMode = true;
+let showOutline = true;
+
+// ============== LOG ==============
+function log(msg, type = 'info') {
+  const logEl = document.getElementById('log');
+  const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const color = type === 'success' ? '#6f6' : type === 'error' ? '#f66' : '#0f0';
+  logEl.innerHTML += `<span style="color:${color}">[${time}] ${msg}</span><br>`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ============== CREATOR FORM ==============
+function addCharField(char = '', pinyin = '') {
+  const list = document.getElementById('char-list');
+  const div = document.createElement('div');
+  div.className = 'char-item';
+  div.innerHTML = `
+    <input type="text" class="char-input" value="${char}" maxlength="2" placeholder="汉字">
+    <input type="text" class="pinyin-input" value="${pinyin}" placeholder="pinyin">
+    <button type="button" onclick="this.parentElement.remove()" style="padding:6px 10px; min-width:30px;">×</button>
+  `;
+  list.appendChild(div);
+}
+
+function getFormData() {
+  const question = document.getElementById('input-question').value.trim();
+  const answer = [];
+
+  document.querySelectorAll('.char-item').forEach(item => {
+    const char = item.querySelector('.char-input').value.trim();
+    const pinyin = item.querySelector('.pinyin-input').value.trim();
+    if (char) {
+      answer.push({ char, pinyin });
+    }
+  });
+
+  if (!question) {
+    alert("Please enter a question or instruction.");
+    return null;
+  }
+  if (answer.length === 0) {
+    alert("Please add at least one character to practice.");
+    return null;
+  }
+
+  return { question, answer };
+}
+
+function generateAndLoadPractice() {
+  const payload = getFormData();
+  if (!payload) return;
+
+  try {
+    const jsonStr = JSON.stringify(payload);
+    const hash = utf8ToBase64(jsonStr);
+    window.location.hash = hash;
+  } catch (e) {
+    console.error(e);
+    alert("Failed to generate link. Please try again.");
+  }
+}
+
+// ============== PRACTICE MODE ==============
+function loadPractice(payload) {
+  document.body.classList.add('practice-mode');
+
+  document.getElementById('question-row').textContent = payload.question || "Practice the following:";
+
+  boxes = payload.answer.map(item => ({
+    char: item.char,
+    pinyin: item.pinyin || '',
+    status: 'pending',
+    mistakes: 0
+  }));
+
+  renderAnswerBoxes();
+  activateBox(0);
+  log(`Loaded practice with ${boxes.length} characters`, 'success');
+}
+
+function renderAnswerBoxes() {
+  const row = document.getElementById('answer-row');
+  row.innerHTML = '';
+
+  boxes.forEach((box, i) => {
+    const div = document.createElement('div');
+    div.className = 'char-box';
+
+    const canvasDiv = document.createElement('div');
+    canvasDiv.className = `box-canvas ${box.status}`;
+    if (i === activeBoxIndex) canvasDiv.classList.add('active');
+    
+    canvasDiv.innerHTML = `<span style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:36px; opacity:0.25;">${box.char}</span>`;
+
+    const pinyinEl = document.createElement('div');
+    pinyinEl.className = 'pinyin';
+    pinyinEl.textContent = box.pinyin;
+
+    div.appendChild(canvasDiv);
+    div.appendChild(pinyinEl);
+    div.onclick = () => activateBox(i);
+
+    row.appendChild(div);
+  });
+}
+
+function activateBox(index) {
+  if (index < 0 || index >= boxes.length) return;
+  activeBoxIndex = index;
+  renderAnswerBoxes();
+
+  const container = document.getElementById('main-canvas-container');
+  container.innerHTML = '';
+
+  if (currentWriter) {
+    currentWriter.cancelQuiz();
+  }
+
+  const char = boxes[index].char;
+
+  currentWriter = HanziWriter.create(container, char, {
+    width: Math.min(window.innerWidth - 40, 520),
+    height: Math.min(window.innerWidth - 40, 520),
+    padding: 25,
+    showCharacter: showOutline,
+    showOutline: showOutline,
+    strokeAnimationSpeed: 1.2,
+    drawingWidth: 14,
+    strokeColor: '#0066cc',
+    outlineColor: '#bbbbbb',
+    drawingColor: '#111'
+  });
+
+  if (isQuizMode) {
+    currentWriter.quiz({
+      onMistake: (data) => {
+        boxes[index].mistakes++;
+        if (boxes[index].status !== 'completed') boxes[index].status = 'partial';
+        renderAnswerBoxes();
+        log(`Mistake on stroke ${data.strokeNum} of "${char}"`);
+      },
+      onCorrectStroke: () => {
+        log(`Correct stroke of "${char}"`);
+      },
+      onComplete: (summary) => {
+        boxes[index].status = 'completed';
+        renderAnswerBoxes();
+        log(`✅ Completed "${char}" — Mistakes: ${summary.totalMistakes}`, 'success');
+
+        if (index < boxes.length - 1) {
+          setTimeout(() => activateBox(index + 1), 900);
+        }
+      }
+    });
+  } else {
+    currentWriter.animateCharacter();
+  }
+}
+
+// ============== HISTORY ==============
+function saveToHistory(payload) {
+  const entry = {
+    ts: Date.now(),
+    question: payload.question.slice(0, 65) + (payload.question.length > 65 ? '...' : ''),
+    hash: location.hash.slice(1)
+  };
+  history.unshift(entry);
+  if (history.length > 15) history.pop();
+  localStorage.setItem('hanziHistory', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+  history.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'menu-item';
+    div.textContent = new Date(item.ts).toLocaleDateString() + ' — ' + item.question;
+    div.onclick = () => {
+      location.hash = item.hash;
+      document.getElementById('menu').classList.remove('open');
+    };
+    list.appendChild(div);
+  });
+}
+
+function loadHistory() {
+  const saved = localStorage.getItem('hanziHistory');
+  if (saved) {
+    history = JSON.parse(saved);
+    renderHistory();
+  }
+}
+
+// ============== EVENT LISTENERS ==============
+document.getElementById('burger').addEventListener('click', () => {
+  document.getElementById('menu').classList.toggle('open');
+});
+
+document.getElementById('new-practice-btn').addEventListener('click', () => {
+  window.location.hash = '';           // Clear hash
+  document.body.classList.remove('practice-mode');
+  document.getElementById('log').innerHTML = '';
+  log('Ready to create a new practice', 'success');
+});
+
+document.getElementById('copy-log').addEventListener('click', () => {
+  const text = document.getElementById('log').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Log copied to clipboard!\nPaste it to your AI assistant for feedback.');
+  });
+});
+
+window.addEventListener('hashchange', () => {
+  const hash = location.hash.slice(1);
+  if (!hash) {
+    document.body.classList.remove('practice-mode');
+    return;
+  }
+
+  try {
+    const jsonStr = base64ToUtf8(hash);
+    const payload = JSON.parse(jsonStr);
+    saveToHistory(payload);
+    loadPractice(payload);
+  } catch (e) {
+    log('Failed to load practice: Invalid or corrupted link', 'error');
+    console.error(e);
+    window.location.hash = '';
+  }
+});
+
+// ============== INITIALIZATION ==============
+window.onload = () => {
+  loadHistory();
+
+  // Add default example characters
+  addCharField('你', 'nǐ');
+  addCharField('好', 'hǎo');
+  addCharField('吗', 'ma');
+
+  // Check if there's already a hash in URL
+  const hash = location.hash.slice(1);
+  if (hash) {
+    try {
+      const jsonStr = base64ToUtf8(hash);
+      const payload = JSON.parse(jsonStr);
+      loadPractice(payload);
+    } catch (e) {
+      log('Invalid link detected. Starting fresh.', 'error');
+      window.location.hash = '';
+    }
+  } else {
+    log('Welcome! Create a new practice or ask your AI to generate a link.', 'success');
+  }
+};
+</script>
+</body>
+</html>

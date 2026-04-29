@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hanzi Trainer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.row { padding: 8px; }
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #222;
+  color: white;
+}
+
+.boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.char-box {
+  width: 64px;
+  height: 64px;
+  border: 2px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.char-box.active { border-color: orange; }
+.char-box.done { background: #c8f7c5; }
+.char-box.in-progress { background: #fff3cd; }
+
+.canvas-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#canvas {
+  width: 100%;
+  max-width: 420px;
+  aspect-ratio: 1 / 1;
+}
+
+.log {
+  height: 120px;
+  overflow-y: auto;
+  background: #111;
+  color: #0f0;
+  font-size: 12px;
+}
+
+input {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 6px;
+}
+
+button {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.error {
+  color: red;
+  padding: 10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="row topbar">
+  <div>Hanzi Trainer</div>
+  <label>
+    Outline
+    <input type="checkbox" id="toggleOutline" checked>
+  </label>
+</div>
+
+<div id="app"></div>
+
+<script>
+// ---------- UTF-8 SAFE BASE64 ----------
+function encodeBase64Unicode(str) {
+  const bytes = new TextEncoder().encode(str);
+  let binary = '';
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary);
+}
+
+function decodeBase64Unicode(base64) {
+  const binary = atob(base64);
+  const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+// ---------- helpers ----------
+function safeSplitChars(str) {
+  // if user typed "汉字" → split into ["汉","字"]
+  if (str.includes(" ")) return str.split(/\s+/);
+  return Array.from(str);
+}
+
+function normalisePayload(payload) {
+  payload.answer = payload.answer.flatMap(safeSplitChars);
+
+  if (!payload.pinyin) payload.pinyin = [];
+
+  while (payload.pinyin.length < payload.answer.length) {
+    payload.pinyin.push('');
+  }
+
+  return payload;
+}
+
+// ---------- core ----------
+let writer, data, activeIndex = 0, progress = [];
+
+function parseHash() {
+  if (!location.hash) return null;
+
+  try {
+    const decoded = decodeBase64Unicode(location.hash.slice(1));
+    return normalisePayload(JSON.parse(decoded));
+  } catch (e) {
+    console.error(e);
+    showError("Failed to parse payload. Invalid link?");
+    return null;
+  }
+}
+
+function showError(msg) {
+  document.getElementById('app').innerHTML =
+    `<div class="error">${msg}</div>`;
+}
+
+// ---------- builder ----------
+function renderBuilder() {
+  document.getElementById('app').innerHTML = `
+    <div class="row">
+      <h3>Create Exercise</h3>
+
+      <label>Question</label>
+      <input id="q" placeholder="Translate: code">
+
+      <label>Answer</label>
+      <input id="a" placeholder="代 码 OR 代码">
+
+      <label>Pinyin (optional)</label>
+      <input id="p" placeholder="dai4 ma3">
+
+      <button onclick="build()">Generate & Start</button>
+    </div>
+  `;
+}
+
+function build() {
+  const q = document.getElementById('q').value.trim();
+  const a = document.getElementById('a').value.trim();
+  const p = document.getElementById('p').value.trim();
+
+  if (!q || !a) {
+    alert("Missing required fields");
+    return;
+  }
+
+  const payload = normalisePayload({
+    question: q,
+    answer: [a],
+    pinyin: p ? p.split(/\s+/) : []
+  });
+
+  const encoded = encodeBase64Unicode(JSON.stringify(payload));
+
+  location.href = location.pathname + "#" + encoded;
+}
+
+// ---------- trainer ----------
+function initWriter(char) {
+  const canvas = document.getElementById('canvas');
+  canvas.innerHTML = '';
+
+  const size = canvas.offsetWidth;
+
+  writer = HanziWriter.create('canvas', char, {
+    width: size,
+    height: size,
+    showCharacter: document.getElementById('toggleOutline').checked,
+    padding: 5
+  });
+
+  writer.quiz({
+    onMistake: (s) => {
+      progress[activeIndex] = "in-progress";
+      updateBoxes();
+    },
+    onComplete: () => {
+      progress[activeIndex] = "done";
+      updateBoxes();
+    }
+  });
+}
+
+function loadChar(i) {
+  activeIndex = i;
+  initWriter(data.answer[i]);
+  updateBoxes();
+}
+
+function updateBoxes() {
+  document.querySelectorAll('.char-box').forEach((el, i) => {
+    el.classList.remove("active","done","in-progress");
+    if (i === activeIndex) el.classList.add("active");
+    if (progress[i]) el.classList.add(progress[i]);
+  });
+}
+
+function renderTrainer() {
+  document.getElementById('app').innerHTML = `
+    <div class="row">${data.question}</div>
+    <div class="row boxes" id="boxes"></div>
+    <div class="canvas-container"><div id="canvas"></div></div>
+  `;
+
+  const boxes = document.getElementById('boxes');
+
+  data.answer.forEach((char, i) => {
+    const div = document.createElement('div');
+    div.className = "char-box";
+    div.innerHTML = `
+      <div>${char}</div>
+      <div style="font-size:10px">${data.pinyin[i]}</div>
+    `;
+    div.onclick = () => loadChar(i);
+    boxes.appendChild(div);
+  });
+
+  progress = new Array(data.answer.length).fill(null);
+
+  // important: delay init so layout is ready
+  setTimeout(() => loadChar(0), 50);
+}
+
+// ---------- boot ----------
+window.onload = () => {
+  const parsed = parseHash();
+
+  if (!parsed) {
+    renderBuilder();
+  } else {
+    data = parsed;
+    renderTrainer();
+  }
+};
+</script>
+
+</body>
+</html>

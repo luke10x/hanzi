@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Hanzi Trainer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+    }
+    .app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      padding: 8px;
+      gap: 8px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .burger {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      cursor: pointer;
+    }
+    .burger span {
+      display: block;
+      width: 18px;
+      height: 2px;
+      background: #333;
+      position: relative;
+    }
+    .burger span::before,
+    .burger span::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 18px;
+      height: 2px;
+      background: #333;
+    }
+    .burger span::before { top: -5px; }
+    .burger span::after { top: 5px; }
+
+    .toggles {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.3);
+      display: none;
+      align-items: flex-start;
+      justify-content: flex-start;
+      z-index: 10;
+    }
+    .menu {
+      width: 80%;
+      max-width: 320px;
+      background: #fff;
+      padding: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+    .menu-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .menu-item {
+      padding: 6px 4px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .question-row {
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      min-height: 40px;
+      font-size: 16px;
+    }
+
+    .boxes-row {
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+    .char-box {
+      width: 64px;
+      height: 64px;
+      border-radius: 4px;
+      border: 2px solid #ccc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      background: #fafafa;
+    }
+    .char-box.active { border-color: #007aff; box-shadow: 0 0 0 2px rgba(0,122,255,0.2); }
+    .char-box.not-started { background: #f0f0f0; }
+    .char-box.in-progress { background: #e6f0ff; }
+    .char-box.completed { background: #e3f9e5; }
+    .char-box.error { background: #ffecec; }
+
+    .char-box-inner { font-size: 28px; }
+    .char-pinyin {
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 10px;
+      color: #555;
+      white-space: nowrap;
+    }
+
+    .canvas-row {
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .canvas-wrapper {
+      width: 100%;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    #character-target-div { width: 100%; }
+
+    .log-row {
+      background: #fff;
+      border-radius: 6px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex: 1;
+      min-height: 120px;
+    }
+    .log-area {
+      width: 100%;
+      flex: 1;
+      resize: vertical;
+      min-height: 80px;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 4px;
+    }
+
+    .empty-state {
+      padding: 8px;
+      background: #fff;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .empty-state input,
+    .empty-state textarea {
+      width: 100%;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    button {
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      background: #f8f8f8;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #eee; }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- History menu -->
+  <div class="menu-overlay" id="menu-overlay">
+    <div class="menu">
+      <div class="menu-header">
+        <strong>Previous questions</strong>
+        <button id="menu-close-btn">Close</button>
+      </div>
+      <div id="menu-items"></div>
+    </div>
+  </div>
+
+  <!-- Top bar -->
+  <div class="top-bar">
+    <div class="burger" id="burger-btn" title="History"><span></span></div>
+    <div class="toggles">
+      <label><input type="checkbox" id="toggle-contour" checked /> Show contour</label>
+      <label><input type="checkbox" id="toggle-auto-advance" checked /> Auto-advance</label>
+    </div>
+  </div>
+
+  <!-- Question -->
+  <div class="question-row" id="question-row"></div>
+
+  <!-- Character boxes -->
+  <div class="boxes-row" id="boxes-row"></div>
+
+  <!-- Canvas -->
+  <div class="canvas-row">
+    <div class="canvas-label" id="canvas-label">Active character: –</div>
+    <div class="canvas-wrapper">
+      <div id="character-target-div"></div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-row">
+    <div class="log-header">
+      <strong>Session log</strong>
+      <button id="copy-log-btn">Copy all</button>
+    </div>
+    <textarea id="log-area" class="log-area" spellcheck="false"></textarea>
+  </div>
+
+  <!-- Human-friendly payload generator -->
+  <div class="empty-state" id="empty-state" style="display:none;">
+    <strong>Create your own question</strong>
+
+    <label>English question:</label>
+    <input id="gen-question" />
+
+    <label>Characters (comma-separated):</label>
+    <input id="gen-hanzi" placeholder="电,脑,码" />
+
+    <label>Pinyin (comma-separated, optional):</label>
+    <input id="gen-pinyin" placeholder="diàn,nǎo,mǎ" />
+
+    <button id="gen-submit-btn">Generate Link</button>
+
+    <hr />
+
+    <strong>Prompt for AI (optional)</strong>
+    <textarea id="prompt-template" readonly></textarea>
+  </div>
+
+</div>
+
+<!-- HanziWriter CDN: placed BEFORE app script to guarantee availability -->
+ <!-- stolef from deepseek-->
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@2.2.1/dist/hanzi-writer.min.js"></script>
+
+
+<script>
+/* Unicode-safe Base64 */
+function encodeBase64Unicode(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function decodeBase64Unicode(b64) {
+  return decodeURIComponent(escape(atob(b64)));
+}
+
+/* STATE */
+let writer = null;
+let currentPayload = null;
+let activeIndex = 0;
+let boxStates = [];
+const HISTORY_KEY = 'hanziTrainerHistoryV1';
+
+/* DOM */
+const questionRow = document.getElementById('question-row');
+const boxesRow = document.getElementById('boxes-row');
+const canvasLabel = document.getElementById('canvas-label');
+const logArea = document.getElementById('log-area');
+const copyLogBtn = document.getElementById('copy-log-btn');
+const toggleContour = document.getElementById('toggle-contour');
+const toggleAutoAdvance = document.getElementById('toggle-auto-advance');
+const emptyState = document.getElementById('empty-state');
+const promptTemplate = document.getElementById('prompt-template');
+const burgerBtn = document.getElementById('burger-btn');
+const menuOverlay = document.getElementById('menu-overlay');
+const menuItems = document.getElementById('menu-items');
+const menuCloseBtn = document.getElementById('menu-close-btn');
+const canvasDiv = document.getElementById('character-target-div');
+
+const genQuestion = document.getElementById('gen-question');
+const genHanzi = document.getElementById('gen-hanzi');
+const genPinyin = document.getElementById('gen-pinyin');
+const genSubmitBtn = document.getElementById('gen-submit-btn');
+
+/* HELPERS */
+function log(line) {
+  const ts = new Date().toISOString();
+  logArea.value += `[${ts}] ${line}\n`;
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function setCanvasSquare() {
+  const width = canvasDiv.clientWidth || canvasDiv.parentElement.clientWidth;
+  canvasDiv.style.height = width + 'px';
+}
+
+function decodePayloadFromHash() {
+  const hash = window.location.hash;
+  if (!hash || hash.length <= 1) return null;
+  try {
+    return JSON.parse(decodeBase64Unicode(hash.substring(1)));
+  } catch {
+    return null;
+  }
+}
+
+function encodePayloadToHash(payload) {
+  return '#' + encodeBase64Unicode(JSON.stringify(payload));
+}
+
+/* HISTORY */
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+  catch { return []; }
+}
+function saveHistory(h) { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+function addToHistory(payload) {
+  const hash = encodePayloadToHash(payload).substring(1);
+  let h = loadHistory().filter(x => x.hash !== hash);
+  h.unshift({ hash, question: payload.question, ts: Date.now() });
+  if (h.length > 20) h = h.slice(0, 20);
+  saveHistory(h);
+}
+function renderHistoryMenu() {
+  const h = loadHistory();
+  menuItems.innerHTML = '';
+  if (h.length === 0) {
+    menuItems.textContent = 'No previous questions.';
+    return;
+  }
+  h.forEach((item, idx) => {
+    const div = document.createElement('div');
+    div.className = 'menu-item';
+    div.textContent = item.question || '(no question text)';
+    div.onclick = () => {
+      let newH = loadHistory().filter((_, i) => i !== idx);
+      saveHistory(newH);
+      window.location.hash = '#' + item.hash;
+      window.location.reload();
+    };
+    menuItems.appendChild(div);
+  });
+}
+
+/* EMPTY STATE */
+function showEmptyState() {
+  emptyState.style.display = 'block';
+  questionRow.textContent = '';
+  boxesRow.innerHTML = '';
+  canvasLabel.textContent = 'Active character: –';
+
+  const examplePayload = {
+    question: "Write the characters for 'computer code'",
+    items: [
+      { hanzi: "电", pinyin: "diàn" },
+      { hanzi: "脑", pinyin: "nǎo" },
+      { hanzi: "码", pinyin: "mǎ" }
+    ]
+  };
+
+  const exampleLink =
+    window.location.origin + window.location.pathname +
+    encodePayloadToHash(examplePayload);
+
+  promptTemplate.value =
+    "You generate links for a Hanzi writing trainer.\n" +
+    "Payload format:\n" +
+    "{ \"question\": \"...\", \"items\": [ {\"hanzi\":\"字\",\"pinyin\":\"zi4\"} ] }\n\n" +
+    "Base64 encode JSON and append as #hash to:\n" +
+    window.location.origin + window.location.pathname + "#<base64>\n\n" +
+    "Example:\n" + exampleLink;
+}
+
+/* RENDER QUESTION + BOXES */
+function renderQuestionAndBoxes() {
+  if (!currentPayload) return showEmptyState();
+
+  emptyState.style.display = 'none';
+  questionRow.textContent = currentPayload.question || '';
+
+  boxesRow.innerHTML = '';
+  boxStates = currentPayload.items.map(() => ({ status: 'not-started', mistakes: 0 }));
+
+  currentPayload.items.forEach((item, idx) => {
+    const box = document.createElement('div');
+    box.className = 'char-box not-started';
+    box.dataset.index = idx;
+
+    const inner = document.createElement('div');
+    inner.className = 'char-box-inner';
+    inner.textContent = item.hanzi;
+
+    const pinyin = document.createElement('div');
+    pinyin.className = 'char-pinyin';
+    pinyin.textContent = item.pinyin || '';
+
+    box.append(inner, pinyin);
+    box.onclick = () => setActiveIndex(idx);
+
+    boxesRow.appendChild(box);
+  });
+
+  setActiveIndex(0);
+}
+
+function updateBoxStyles() {
+  const boxes = boxesRow.querySelectorAll('.char-box');
+  boxes.forEach((box, idx) => {
+    const state = boxStates[idx];
+    box.className = 'char-box ' + state.status + (idx === activeIndex ? ' active' : '');
+  });
+}
+
+function setActiveIndex(idx) {
+  activeIndex = idx;
+  updateBoxStyles();
+  const item = currentPayload.items[idx];
+  canvasLabel.textContent = `Active character: ${item.hanzi} (${item.pinyin || ''})`;
+  setCanvasSquare();
+  initWriterForChar(item.hanzi);
+}
+
+function initWriterForChar(char) {
+  if (typeof HanziWriter === 'undefined') {
+    alert('HanziWriter failed to load. Check your network or CDN.');
+    return;
+  }
+
+  if (writer) {
+    writer = null;
+  }
+
+  const size = canvasDiv.clientWidth || canvasDiv.parentElement.clientWidth || 300;
+
+  writer = HanziWriter.create('character-target-div', char, {
+    width: size,
+    height: size,
+    showCharacter: toggleContour.checked,
+    padding: 5
+  });
+
+  const idx = activeIndex;
+  boxStates[idx].status = 'in-progress';
+  updateBoxStyles();
+
+  writer.quiz({
+    onMistake: s => {
+      boxStates[idx].mistakes++;
+      log(`Mistake on ${char}, stroke ${s.strokeNum}`);
+    },
+    onCorrectStroke: s => {
+      log(`Correct stroke ${s.strokeNum} on ${char}`);
+    },
+    onComplete: s => {
+      const mistakes = s.totalMistakes;
+      boxStates[idx].status = mistakes > 0 ? 'error' : 'completed';
+      log(`Completed ${char} with ${mistakes} mistakes`);
+      updateBoxStyles();
+      if (toggleAutoAdvance.checked && currentPayload.items[idx + 1]) {
+        setActiveIndex(idx + 1);
+      }
+    }
+  });
+}
+
+/* GENERATOR */
+genSubmitBtn.onclick = () => {
+  const q = genQuestion.value.trim();
+  const hanziList = genHanzi.value.split(',').map(s => s.trim()).filter(Boolean);
+  const pinyinList = genPinyin.value.split(',').map(s => s.trim());
+
+  if (!q || hanziList.length === 0) {
+    alert("Please enter a question and at least one character.");
+    return;
+  }
+
+  const items = hanziList.map((h, i) => ({
+    hanzi: h,
+    pinyin: pinyinList[i] || ""
+  }));
+
+  const payload = { question: q, items };
+  window.location.hash = encodePayloadToHash(payload);
+  window.location.reload();
+};
+
+/* EVENTS */
+copyLogBtn.onclick = async () => {
+  try {
+    await navigator.clipboard.writeText(logArea.value);
+    alert('Log copied to clipboard.');
+  } catch {
+    alert('Copy failed. Please select and copy manually.');
+  }
+};
+
+toggleContour.onchange = () => {
+  if (writer) writer.setOptions({ showCharacter: toggleContour.checked });
+};
+
+burgerBtn.onclick = () => {
+  renderHistoryMenu();
+  menuOverlay.style.display = 'flex';
+};
+menuCloseBtn.onclick = () => { menuOverlay.style.display = 'none'; };
+menuOverlay.onclick = e => { if (e.target === menuOverlay) menuOverlay.style.display = 'none'; };
+
+window.onresize = setCanvasSquare;
+window.onhashchange = () => window.location.reload();
+
+/* INIT */
+window.onload = () => {
+  setCanvasSquare();
+  currentPayload = decodePayloadFromHash();
+  if (currentPayload) addToHistory(currentPayload);
+  renderQuestionAndBoxes();
+};
+</script>
+
+</body>
+</html>

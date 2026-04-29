@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hanzi Writer - AI Assisted Learning</title>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.3.0/dist/hanzi-writer.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a2e;
+            color: #eee;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #16213e; }
+        ::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #e94560; }
+        
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            flex-shrink: 0;
+            gap: 10px;
+        }
+        .burger-btn {
+            background: none;
+            border: none;
+            color: #eee;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .burger-btn:hover { background: #0f3460; }
+        .mode-toggles {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .toggle-btn {
+            background: #0f3460;
+            border: 1px solid #e94560;
+            color: #eee;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+        .toggle-btn.active {
+            background: #e94560;
+            border-color: #e94560;
+        }
+        .toggle-btn:hover { opacity: 0.8; }
+        
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 300px;
+            height: 100vh;
+            background: #16213e;
+            border-right: 1px solid #0f3460;
+            z-index: 1000;
+            transition: left 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .side-menu.open { left: 0; }
+        .menu-header {
+            padding: 16px;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .menu-header h2 { font-size: 18px; }
+        .close-menu {
+            background: none;
+            border: none;
+            color: #eee;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .menu-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+        }
+        .menu-item {
+            padding: 12px;
+            margin-bottom: 6px;
+            background: #0f3460;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .menu-item:hover {
+            background: #1a1a2e;
+            border-left-color: #e94560;
+        }
+        .menu-item-question {
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .menu-item-date {
+            font-size: 11px;
+            color: #888;
+        }
+        .menu-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #888;
+            font-size: 14px;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            display: none;
+        }
+        .overlay.show { display: block; }
+        
+        .question-row {
+            padding: 12px 16px;
+            background: #16213e;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .question-text {
+            font-size: 18px;
+            color: #fff;
+            font-weight: 500;
+        }
+        .question-hint {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .boxes-row {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 4px;
+            padding: 12px 8px;
+            background: #1a1a2e;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            min-height: 90px;
+        }
+        .char-box {
+            width: 64px;
+            height: 64px;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            background: #16213e;
+        }
+        .char-box:hover { border-color: #e94560; }
+        .char-box.active {
+            border-color: #e94560;
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.3);
+            background: #1a1a2e;
+        }
+        .char-box.completed {
+            border-color: #4ecca3;
+            background: rgba(78, 204, 163, 0.1);
+        }
+        .char-box.in-progress {
+            border-color: #f4d03f;
+            background: rgba(244, 208, 63, 0.1);
+        }
+        .char-box.space {
+            width: 32px;
+            border: none;
+            background: transparent;
+            cursor: default;
+        }
+        .char-box.space:hover { border: none; }
+        .char-display {
+            font-size: 32px;
+            line-height: 1;
+            color: #fff;
+        }
+        .char-pinyin {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+        }
+        .char-status {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #555;
+        }
+        .char-status.completed { background: #4ecca3; }
+        .char-status.in-progress { background: #f4d03f; }
+        
+        .canvas-row {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+            background: #1a1a2e;
+            position: relative;
+            min-height: 0;
+        }
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            max-width: min(100vw - 32px, 500px);
+            aspect-ratio: 1 / 1;
+            background: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        #character-target-div {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .log-row {
+            height: 140px;
+            background: #16213e;
+            border-top: 1px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 12px;
+            border-bottom: 1px solid #0f3460;
+        }
+        .log-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .copy-btn {
+            background: #0f3460;
+            border: 1px solid #e94560;
+            color: #eee;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover { background: #e94560; }
+        .copy-btn.copied {
+            background: #4ecca3;
+            border-color: #4ecca3;
+        }
+        .log-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .log-entry {
+            margin-bottom: 4px;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .log-entry.mistake { color: #e94560; }
+        .log-entry.correct { color: #4ecca3; }
+        .log-entry.complete { color: #f4d03f; font-weight: bold; }
+        .log-entry.info { color: #888; }
+        
+        .creator-state {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .creator-state.show { display: flex; }
+        .creator-header {
+            padding: 24px 20px 12px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .creator-header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+            color: #fff;
+        }
+        .creator-header p {
+            font-size: 14px;
+            color: #888;
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        .creator-form {
+            flex: 1;
+            padding: 12px 20px 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #aaa;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-input, .form-textarea {
+            width: 100%;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #eee;
+            font-size: 15px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-input:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #e94560;
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-hint {
+            font-size: 12px;
+            color: #666;
+            margin-top: 4px;
+        }
+        .pinyin-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .pinyin-chip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #0f3460;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .pinyin-chip .hanzi-char {
+            font-size: 18px;
+            color: #e94560;
+        }
+        .pinyin-chip input {
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #e94560;
+            color: #eee;
+            font-size: 14px;
+            width: 80px;
+            text-align: center;
+            padding: 2px;
+        }
+        .pinyin-chip input:focus {
+            outline: none;
+            border-bottom-width: 2px;
+        }
+        .submit-btn {
+            width: 100%;
+            background: #e94560;
+            border: none;
+            color: #fff;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        .submit-btn:hover { background: #d63550; transform: translateY(-1px); }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .ai-prompt-section {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #0f3460;
+        }
+        .ai-prompt-section h3 {
+            font-size: 14px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        .ai-prompt-box {
+            background: #16213e;
+            border: 1px solid #0f3460;
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #ccc;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 250px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .copy-prompt-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #0f3460;
+            border: 1px solid #e94560;
+            color: #eee;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        .copy-prompt-btn:hover { background: #e94560; }
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 20px 0;
+            color: #666;
+            font-size: 13px;
+        }
+        .divider::before, .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #0f3460;
+        }
+        
+        .quiz-state {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+        }
+        .quiz-state.show { display: flex; }
+        
+        @media (max-width: 480px) {
+            .char-box { width: 56px; height: 56px; }
+            .char-display { font-size: 28px; }
+            .question-text { font-size: 16px; }
+            .log-row { height: 120px; }
+            .creator-header h1 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Side Menu -->
+    <div class="overlay" id="overlay"></div>
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <h2>History</h2>
+            <button class="close-menu" id="closeMenu">&times;</button>
+        </div>
+        <div class="menu-list" id="menuList">
+            <div class="menu-empty">No history yet</div>
+        </div>
+    </div>
+
+    <!-- Creator State (No Payload) -->
+    <div class="creator-state" id="creatorState">
+        <div class="creator-header">
+            <h1>📝 Hanzi Writer</h1>
+            <p>Create your own Chinese character quiz. Fill in the form below to generate a shareable link, or use the AI prompt to have an assistant generate one for you.</p>
+        </div>
+        
+        <div class="creator-form">
+            <div class="form-group">
+                <label class="form-label">Question (English)</label>
+                <input type="text" class="form-input" id="creatorQuestion" placeholder="e.g., How do you say 'Hello' in Chinese?">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Answer (Chinese)</label>
+                <input type="text" class="form-input" id="creatorAnswer" placeholder="e.g., 你好">
+                <div class="form-hint">Type Chinese characters. Spaces will create word gaps. Non-Chinese characters will be shown but not drawn.</div>
+            </div>
+            
+            <div class="form-group" id="pinyinGroup" style="display:none;">
+                <label class="form-label">Pinyin</label>
+                <div class="form-hint">Enter pinyin for each Chinese character below:</div>
+                <div class="pinyin-list" id="pinyinList"></div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Hint (Optional)</label>
+                <input type="text" class="form-input" id="creatorHint" placeholder="e.g., Two characters, first means 'you'">
+            </div>
+            
+            <button class="submit-btn" id="createQuizBtn">Create Quiz & Start</button>
+            
+            <div class="divider">or</div>
+            
+            <div class="ai-prompt-section">
+                <h3>🤖 Ask an AI to generate a link</h3>
+                <div class="ai-prompt-box">
+                    <button class="copy-prompt-btn" id="copyPromptBtn">Copy</button>
+                    <div id="aiPromptText"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz State -->
+    <div class="quiz-state" id="quizState">
+        <!-- Row 1: Top Bar -->
+        <div class="top-bar">
+            <button class="burger-btn" id="burgerBtn">☰</button>
+            <div class="mode-toggles">
+                <button class="toggle-btn" id="contourToggle">Show Outline</button>
+                <button class="toggle-btn active" id="quizToggle">Quiz Mode</button>
+                <button class="toggle-btn" id="newQuizBtn">New Quiz</button>
+            </div>
+        </div>
+
+        <!-- Row 2: Question -->
+        <div class="question-row">
+            <div class="question-text" id="questionText">Loading...</div>
+            <div class="question-hint" id="questionHint"></div>
+        </div>
+
+        <!-- Row 3: Character Boxes -->
+        <div class="boxes-row" id="boxesRow"></div>
+
+        <!-- Row 4: Canvas -->
+        <div class="canvas-row">
+            <div class="canvas-container" id="canvasContainer">
+                <div id="character-target-div"></div>
+            </div>
+        </div>
+
+        <!-- Row 5: Log -->
+        <div class="log-row">
+            <div class="log-header">
+                <span class="log-title">Session Log</span>
+                <button class="copy-btn" id="copyLogBtn">Copy All</button>
+            </div>
+            <div class="log-content" id="logContent"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== UNICODE-SAFE BASE64 ====================
+        // btoa/atob only handle Latin1. These functions properly encode/decode Unicode.
+        function utf8ToBase64(str) {
+            const bytes = new TextEncoder().encode(str);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        function base64ToUtf8(str) {
+            const binary = atob(str);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return new TextDecoder().decode(bytes);
+        }
+
+        // ==================== STATE MANAGEMENT ====================
+        let currentQuiz = null;
+        let activeBoxIndex = 0;
+        let sessionLog = [];
+        let showContour = false;
+        let quizMode = true;
+        let menuHistory = [];
+        let currentPinyinMap = [];
+
+        // ==================== LOCAL STORAGE ====================
+        function loadHistory() {
+            try {
+                const stored = localStorage.getItem('hanziHistory');
+                if (stored) {
+                    menuHistory = JSON.parse(stored);
+                }
+            } catch (e) {
+                menuHistory = [];
+            }
+        }
+
+        function saveHistory() {
+            try {
+                localStorage.setItem('hanziHistory', JSON.stringify(menuHistory));
+            } catch (e) {}
+        }
+
+        function addToHistory(quiz) {
+            menuHistory = menuHistory.filter(q => q.id !== quiz.id);
+            menuHistory.unshift({
+                id: quiz.id || Date.now().toString(),
+                question: quiz.question,
+                answer: quiz.answer,
+                pinyin: quiz.pinyin,
+                timestamp: new Date().toISOString()
+            });
+            if (menuHistory.length > 20) menuHistory = menuHistory.slice(0, 20);
+            saveHistory();
+            renderMenu();
+        }
+
+        function removeFromHistory(id) {
+            menuHistory = menuHistory.filter(q => q.id !== id);
+            saveHistory();
+            renderMenu();
+        }
+
+        // ==================== MENU UI ====================
+        function renderMenu() {
+            const list = document.getElementById('menuList');
+            if (menuHistory.length === 0) {
+                list.innerHTML = '<div class="menu-empty">No history yet</div>';
+                return;
+            }
+            list.innerHTML = menuHistory.map(item => {
+                const date = new Date(item.timestamp);
+                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                return `
+                    <div class="menu-item" data-id="${item.id}">
+                        <div class="menu-item-question">${escapeHtml(item.question)}</div>
+                        <div class="menu-item-date">${dateStr} · ${item.answer}</div>
+                    </div>
+                `;
+            }).join('');
+
+            list.querySelectorAll('.menu-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = el.dataset.id;
+                    const item = menuHistory.find(q => q.id === id);
+                    if (item) {
+                        removeFromHistory(id);
+                        loadQuiz(item);
+                        closeMenu();
+                    }
+                });
+            });
+        }
+
+        function openMenu() {
+            document.getElementById('sideMenu').classList.add('open');
+            document.getElementById('overlay').classList.add('show');
+        }
+
+        function closeMenu() {
+            document.getElementById('sideMenu').classList.remove('open');
+            document.getElementById('overlay').classList.remove('show');
+        }
+
+        // ==================== PAYLOAD PARSING ====================
+        function parsePayload() {
+            const hash = window.location.hash.slice(1);
+            if (!hash) return null;
+            
+            try {
+                const jsonStr = base64ToUtf8(hash);
+                const data = JSON.parse(jsonStr);
+                
+                if (!data.question || !data.answer) {
+                    console.error('Payload missing required fields');
+                    return null;
+                }
+                
+                return processQuizData(data);
+            } catch (e) {
+                console.error('Failed to parse payload:', e);
+                return null;
+            }
+        }
+
+        function processQuizData(data) {
+            const chars = [];
+            const pinyin = data.pinyin || [];
+            let pinyinIdx = 0;
+            
+            for (let i = 0; i < data.answer.length; i++) {
+                const char = data.answer[i];
+                if (/\s/.test(char)) {
+                    chars.push({ type: 'space', char: ' ' });
+                } else if (/[\u4e00-\u9fff]/.test(char)) {
+                    chars.push({
+                        type: 'hanzi',
+                        char: char,
+                        pinyin: pinyin[pinyinIdx] || '',
+                        completed: false,
+                        mistakes: 0,
+                        strokesCompleted: 0,
+                        totalStrokes: 0
+                    });
+                    pinyinIdx++;
+                } else {
+                    chars.push({
+                        type: 'other',
+                        char: char,
+                        pinyin: '',
+                        completed: false,
+                        mistakes: 0
+                    });
+                }
+            }
+            
+            return {
+                id: data.id || Date.now().toString(),
+                question: data.question,
+                hint: data.hint || '',
+                answer: data.answer,
+                pinyin: data.pinyin || [],
+                characters: chars
+            };
+        }
+
+        function encodePayload(data) {
+            const payload = {
+                id: data.id || Date.now().toString(),
+                question: data.question,
+                answer: data.answer,
+                pinyin: data.pinyin || [],
+                hint: data.hint || ''
+            };
+            return utf8ToBase64(JSON.stringify(payload));
+        }
+
+        // ==================== CREATOR FORM ====================
+        function initCreator() {
+            const answerInput = document.getElementById('creatorAnswer');
+            const pinyinGroup = document.getElementById('pinyinGroup');
+            const pinyinList = document.getElementById('pinyinList');
+            
+            answerInput.addEventListener('input', () => {
+                const text = answerInput.value;
+                const hanziChars = [];
+                for (let char of text) {
+                    if (/[\u4e00-\u9fff]/.test(char)) {
+                        hanziChars.push(char);
+                    }
+                }
+                
+                if (hanziChars.length > 0) {
+                    pinyinGroup.style.display = 'block';
+                    pinyinList.innerHTML = hanziChars.map((char, idx) => `
+                        <div class="pinyin-chip">
+                            <span class="hanzi-char">${char}</span>
+                            <input type="text" class="pinyin-input" data-idx="${idx}" placeholder="pinyin" value="${currentPinyinMap[idx] || ''}">
+                        </div>
+                    `).join('');
+                    
+                    pinyinList.querySelectorAll('.pinyin-input').forEach((input, idx) => {
+                        input.value = currentPinyinMap[idx] || '';
+                        input.addEventListener('input', (e) => {
+                            currentPinyinMap[idx] = e.target.value;
+                        });
+                    });
+                } else {
+                    pinyinGroup.style.display = 'none';
+                    pinyinList.innerHTML = '';
+                }
+            });
+            
+            document.getElementById('createQuizBtn').addEventListener('click', createQuizFromForm);
+            document.getElementById('copyPromptBtn').addEventListener('click', copyAiPrompt);
+        }
+
+        function createQuizFromForm() {
+            const question = document.getElementById('creatorQuestion').value.trim();
+            const answer = document.getElementById('creatorAnswer').value;
+            const hint = document.getElementById('creatorHint').value.trim();
+            
+            if (!question || !answer) {
+                alert('Please fill in both Question and Answer fields.');
+                return;
+            }
+            
+            const pinyin = [];
+            document.querySelectorAll('.pinyin-input').forEach(input => {
+                pinyin.push(input.value.trim());
+            });
+            
+            const quizData = {
+                id: Date.now().toString(),
+                question: question,
+                answer: answer,
+                pinyin: pinyin,
+                hint: hint
+            };
+            
+            const hash = encodePayload(quizData);
+            window.location.hash = hash;
+            
+            const quiz = processQuizData(quizData);
+            loadQuiz(quiz);
+        }
+
+        function generateAiPrompt() {
+            return `You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.
+
+To generate a quiz link, create a JSON object with these fields:
+- "question": The English question/prompt (e.g., "How do you say 'Hello' in Chinese?")
+- "answer": The Chinese answer as a string (e.g., "你好")
+- "pinyin": Array of pinyin for each Chinese character (e.g., ["nǐ", "hǎo"])
+- "hint": Optional hint text
+- "id": Optional unique ID
+
+Then base64 encode the JSON and append it as a hash to this URL:
+${window.location.origin}${window.location.pathname}#<base64_encoded_json>
+
+Example payload before encoding:
+{
+  "question": "How do you say 'Thank you' in Chinese?",
+  "answer": "谢谢",
+  "pinyin": ["xiè", "xie"],
+  "hint": "Two identical characters"
+}
+
+Rules:
+- Only include Chinese characters in "answer" that should be drawn (hanzi)
+- Spaces in the answer string will be rendered as word separators
+- Pinyin array length must match the number of hanzi characters
+- The app tracks stroke-by-stroke progress and mistakes
+- Users can copy their session log to share back with you for analysis`;
+        }
+
+        function copyAiPrompt() {
+            const text = generateAiPrompt();
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyPromptBtn');
+                btn.textContent = 'Copied!';
+                setTimeout(() => btn.textContent = 'Copy', 2000);
+            });
+        }
+
+        // ==================== UI RENDERING ====================
+        function renderBoxes() {
+            const row = document.getElementById('boxesRow');
+            if (!currentQuiz) return;
+            
+            row.innerHTML = currentQuiz.characters.map((char, idx) => {
+                if (char.type === 'space') {
+                    return '<div class="char-box space"></div>';
+                }
+                
+                let statusClass = '';
+                let statusDot = '';
+                if (char.completed) {
+                    statusClass = 'completed';
+                    statusDot = 'completed';
+                } else if (char.strokesCompleted > 0) {
+                    statusClass = 'in-progress';
+                    statusDot = 'in-progress';
+                }
+                
+                const isActive = idx === activeBoxIndex;
+                
+                return `
+                    <div class="char-box ${statusClass} ${isActive ? 'active' : ''}" data-index="${idx}">
+                        <div class="char-status ${statusDot}"></div>
+                        <div class="char-display">${char.completed ? char.char : '?'}</div>
+                        ${char.pinyin ? `<div class="char-pinyin">${char.pinyin}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            row.querySelectorAll('.char-box:not(.space)').forEach(box => {
+                box.addEventListener('click', () => {
+                    const idx = parseInt(box.dataset.index);
+                    if (idx !== activeBoxIndex) {
+                        activeBoxIndex = idx;
+                        renderBoxes();
+                        loadActiveCharacter();
+                    }
+                });
+            });
+        }
+
+        function updateBoxState(index, state) {
+            if (!currentQuiz) return;
+            const char = currentQuiz.characters[index];
+            if (state.mistakes !== undefined) char.mistakes = state.mistakes;
+            if (state.strokesCompleted !== undefined) char.strokesCompleted = state.strokesCompleted;
+            if (state.totalStrokes !== undefined) char.totalStrokes = state.totalStrokes;
+            if (state.completed !== undefined) char.completed = state.completed;
+            renderBoxes();
+        }
+
+        // ==================== HANZI WRITER ====================
+        let currentWriter = null;
+
+        function loadActiveCharacter() {
+            if (!currentQuiz) return;
+            
+            const char = currentQuiz.characters[activeBoxIndex];
+            if (!char || char.type !== 'hanzi') {
+                findNextHanzi();
+                return;
+            }
+            
+            const container = document.getElementById('character-target-div');
+            container.innerHTML = '';
+            
+            const containerSize = document.getElementById('canvasContainer').clientWidth;
+            
+            currentWriter = HanziWriter.create('character-target-div', char.char, {
+                width: containerSize,
+                height: containerSize,
+                showCharacter: false,
+                showOutline: showContour,
+                padding: 5,
+                strokeAnimationSpeed: 1,
+                delayBetweenStrokes: 0,
+                strokeColor: '#333',
+                outlineColor: '#ddd',
+                drawingColor: '#e94560',
+                drawingWidth: 4,
+                highlightColor: '#e94560',
+                highlightSpeed: 1,
+                highlightCompleteColor: '#4ecca3'
+            });
+            
+            if (quizMode && !char.completed) {
+                startQuiz();
+            } else {
+                currentWriter.showCharacter();
+            }
+        }
+
+        function startQuiz() {
+            if (!currentWriter) return;
+            
+            const char = currentQuiz.characters[activeBoxIndex];
+            const startMistakes = char.mistakes || 0;
+            
+            currentWriter.quiz({
+                onMistake: function(strokeData) {
+                    char.mistakes = startMistakes + strokeData.totalMistakes;
+                    updateBoxState(activeBoxIndex, { 
+                        mistakes: char.mistakes,
+                        strokesCompleted: strokeData.strokeNum - 1
+                    });
+                    
+                    logEvent('mistake', `Stroke ${strokeData.strokeNum}: mistake (#${strokeData.totalMistakes} total)`);
+                },
+                onCorrectStroke: function(strokeData) {
+                    updateBoxState(activeBoxIndex, {
+                        strokesCompleted: strokeData.strokeNum,
+                        totalStrokes: strokeData.strokeNum + strokeData.strokesRemaining
+                    });
+                    
+                    logEvent('correct', `Stroke ${strokeData.strokeNum} correct (${strokeData.strokesRemaining} remaining)`);
+                },
+                onComplete: function(summaryData) {
+                    updateBoxState(activeBoxIndex, {
+                        completed: true,
+                        strokesCompleted: summaryData.totalStrokes
+                    });
+                    
+                    logEvent('complete', `Completed "${summaryData.character}" with ${summaryData.totalMistakes} mistakes`);
+                    
+                    setTimeout(() => {
+                        findNextHanzi();
+                    }, 800);
+                }
+            });
+        }
+
+        function findNextHanzi() {
+            if (!currentQuiz) return;
+            
+            for (let i = activeBoxIndex + 1; i < currentQuiz.characters.length; i++) {
+                const char = currentQuiz.characters[i];
+                if (char.type === 'hanzi' && !char.completed) {
+                    activeBoxIndex = i;
+                    renderBoxes();
+                    loadActiveCharacter();
+                    return;
+                }
+            }
+            
+            for (let i = 0; i < currentQuiz.characters.length; i++) {
+                const char = currentQuiz.characters[i];
+                if (char.type === 'hanzi' && !char.completed) {
+                    activeBoxIndex = i;
+                    renderBoxes();
+                    loadActiveCharacter();
+                    return;
+                }
+            }
+            
+            logEvent('complete', '🎉 All characters completed!');
+        }
+
+        // ==================== LOGGING ====================
+        function logEvent(type, message) {
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            const entry = { type, message, timestamp };
+            sessionLog.push(entry);
+            
+            const logContent = document.getElementById('logContent');
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            div.textContent = `[${timestamp}] ${message}`;
+            logContent.appendChild(div);
+            logContent.scrollTop = logContent.scrollHeight;
+        }
+
+        function getLogText() {
+            if (!currentQuiz) return '';
+            
+            let text = `HANZI WRITER SESSION LOG\n`;
+            text += `Question: ${currentQuiz.question}\n`;
+            text += `Answer: ${currentQuiz.answer}\n`;
+            text += `Date: ${new Date().toLocaleString()}\n`;
+            text += `═══════════════════════════════════════\n\n`;
+            
+            sessionLog.forEach(entry => {
+                text += `[${entry.timestamp}] ${entry.message}\n`;
+            });
+            
+            text += `\n═══════════════════════════════════════\n`;
+            text += `Character Summary:\n`;
+            currentQuiz.characters.forEach((char) => {
+                if (char.type === 'hanzi') {
+                    text += `${char.char} (${char.pinyin}): ${char.completed ? '✓' : '○'} Mistakes: ${char.mistakes}\n`;
+                }
+            });
+            
+            return text;
+        }
+
+        function copyLog() {
+            const text = getLogText();
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.getElementById('copyLogBtn');
+                btn.textContent = 'Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = 'Copy All';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // ==================== QUIZ LOADING ====================
+        function loadQuiz(data) {
+            currentQuiz = data;
+            activeBoxIndex = 0;
+            sessionLog = [];
+            currentPinyinMap = [];
+            
+            for (let i = 0; i < currentQuiz.characters.length; i++) {
+                if (currentQuiz.characters[i].type === 'hanzi') {
+                    activeBoxIndex = i;
+                    break;
+                }
+            }
+            
+            document.getElementById('questionText').textContent = currentQuiz.question;
+            document.getElementById('questionHint').textContent = currentQuiz.hint || `Write: ${currentQuiz.answer}`;
+            document.getElementById('logContent').innerHTML = '';
+            
+            logEvent('info', `Started quiz: ${currentQuiz.question}`);
+            
+            document.getElementById('creatorState').classList.remove('show');
+            document.getElementById('quizState').classList.add('show');
+            
+            renderBoxes();
+            loadActiveCharacter();
+            addToHistory(currentQuiz);
+        }
+
+        function showCreator() {
+            document.getElementById('quizState').classList.remove('show');
+            document.getElementById('creatorState').classList.add('show');
+            document.getElementById('creatorQuestion').value = '';
+            document.getElementById('creatorAnswer').value = '';
+            document.getElementById('creatorHint').value = '';
+            document.getElementById('pinyinGroup').style.display = 'none';
+            document.getElementById('pinyinList').innerHTML = '';
+            currentPinyinMap = [];
+            window.location.hash = '';
+        }
+
+        // ==================== TOGGLES ====================
+        function toggleContour() {
+            showContour = !showContour;
+            document.getElementById('contourToggle').classList.toggle('active', showContour);
+            if (currentWriter) {
+                loadActiveCharacter();
+            }
+        }
+
+        function toggleQuizMode() {
+            quizMode = !quizMode;
+            document.getElementById('quizToggle').classList.toggle('active', quizMode);
+            loadActiveCharacter();
+        }
+
+        // ==================== UTILS ====================
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ==================== INIT ====================
+        function init() {
+            loadHistory();
+            renderMenu();
+            initCreator();
+            
+            document.getElementById('aiPromptText').textContent = generateAiPrompt();
+            
+            document.getElementById('burgerBtn').addEventListener('click', openMenu);
+            document.getElementById('closeMenu').addEventListener('click', closeMenu);
+            document.getElementById('overlay').addEventListener('click', closeMenu);
+            document.getElementById('contourToggle').addEventListener('click', toggleContour);
+            document.getElementById('quizToggle').addEventListener('click', toggleQuizMode);
+            document.getElementById('copyLogBtn').addEventListener('click', copyLog);
+            document.getElementById('newQuizBtn').addEventListener('click', showCreator);
+            
+            window.addEventListener('resize', () => {
+                if (currentQuiz) {
+                    loadActiveCharacter();
+                }
+            });
+            
+            window.addEventListener('hashchange', () => {
+                const quiz = parsePayload();
+                if (quiz) {
+                    loadQuiz(quiz);
+                } else {
+                    showCreator();
+                }
+            });
+            
+            const quiz = parsePayload();
+            if (quiz) {
+                loadQuiz(quiz);
+            } else {
+                document.getElementById('creatorState').classList.add('show');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI Hanzi Trainer</title>
+  <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5.0/dist/hanzi-writer.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --border: #dee2e6;
+      --primary: #0d6efd;
+      --primary-hover: #0b5ed7;
+      --success: #198754;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --text: #212529;
+      --text-muted: #6c757d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); }
+    
+    .app { display: flex; flex-direction: column; height: 100%; width: 100%; overflow: hidden; }
+    
+    /* Header */
+    .row-1 { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: var(--surface); border-bottom: 1px solid var(--border); position: relative; z-index: 10; flex-shrink: 0; }
+    .burger { background: none; border: none; font-size: 24px; cursor: pointer; padding: 4px; color: var(--text); }
+    .toggles { display: flex; gap: 12px; font-size: 14px; }
+    .toggle-label { display: flex; align-items: center; gap: 4px; cursor: pointer; user-select: none; }
+    
+    .menu-dropdown { position: absolute; top: 100%; left: 0; width: 100%; max-height: 50vh; overflow-y: auto; background: var(--surface); border-bottom: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; z-index: 20; }
+    .menu-dropdown.open { display: block; }
+    .menu-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .menu-item:hover { background: #f1f3f5; }
+    .menu-item:last-child { border-bottom: none; }
+    
+    /* View Containers */
+    .view { flex: 1; min-height: 0; display: none; overflow: hidden; }
+    .view.active { display: flex; flex-direction: column; }
+    
+    /* Quiz View Rows */
+    .row-2 { padding: 10px; text-align: center; font-weight: 600; font-size: 1.1rem; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .row-3 { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 10px; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; max-height: 25vh; overflow-y: auto; }
+    .box-wrap { display: flex; flex-direction: column; align-items: center; cursor: pointer; transition: transform 0.1s; }
+    .box-wrap:hover { transform: scale(1.05); }
+    .box { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border: 2px solid var(--border); border-radius: 8px; background: #f8f9fa; font-size: 24px; transition: all 0.2s; user-select: none; }
+    .box.active { border-color: var(--primary); background: #e7f1ff; box-shadow: 0 0 0 3px rgba(13,110,253,0.2); }
+    .box.in-progress { background: #fff3cd; border-color: var(--warning); }
+    .box.complete { background: #d1e7dd; border-color: var(--success); }
+    .pinyin { font-size: 11px; margin-top: 3px; color: var(--text-muted); height: 14px; text-align: center; width: 100%; }
+    .spacer { width: 16px; }
+    
+    .row-4 { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; background: #f1f3f5; padding: 8px; min-height: 0; overflow: hidden; }
+    #canvas-container { height: 100%; width: auto; aspect-ratio: 1 / 1; max-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+    #character-target-div { width: 100%; height: 100%; touch-action: none; }
+    
+    .row-5 { display: flex; flex-direction: column; padding: 10px; background: var(--surface); border-top: 1px solid var(--border); gap: 6px; flex-shrink: 0; max-height: 20vh; }
+    #log { flex: 1; min-height: 40px; resize: none; padding: 8px; font-family: ui-monospace, monospace; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: #f8f9fa; color: var(--text); }
+    .log-actions { display: flex; justify-content: flex-end; }
+    
+    /* Generator View */
+    .generator-view { padding: 16px; gap: 16px; overflow-y: auto; background: var(--bg); align-items: center; }
+    .generator-card { width: 100%; max-width: 600px; background: var(--surface); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 40px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: var(--text); }
+    .form-control { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; background: #fff; }
+    .form-control:focus { outline: 2px solid var(--primary); border-color: transparent; }
+    
+    .char-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .char-input { flex: 1; text-align: center; font-size: 20px; font-weight: 500; }
+    .pinyin-input { flex: 2; font-family: monospace; }
+    .btn-icon { padding: 8px 12px; font-size: 16px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+    
+    .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .tab { padding: 8px 16px; cursor: pointer; border-bottom: 2px solid transparent; font-size: 14px; font-weight: 500; color: var(--text-muted); }
+    .tab.active { border-bottom-color: var(--primary); color: var(--primary); }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .help-text { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .prompt-box { background: #f8f9fa; padding: 12px; border-radius: 6px; border: 1px dashed var(--border); font-family: monospace; font-size: 11px; line-height: 1.4; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 12px; }
+    
+    .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    
+    /* Buttons */
+    button { padding: 6px 12px; border: none; background: var(--primary); color: white; border-radius: 4px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
+    button:hover { background: var(--primary-hover); }
+    button:disabled { background: var(--text-muted); cursor: not-allowed; }
+    button.secondary { background: var(--text-muted); }
+    button.secondary:hover { background: #5c636a; }
+    button.danger { background: var(--danger); }
+    button.danger:hover { background: #bb2d3b; }
+  </style>
+</head>
+<body>
+
+  <div class="app">
+    <!-- Header -->
+    <header class="row-1">
+      <button class="burger" id="burger-btn" aria-label="Menu">☰</button>
+      <div class="toggles">
+        <label class="toggle-label"><input type="checkbox" id="contour-toggle"> Show Contour</label>
+      </div>
+      <div class="menu-dropdown" id="menu-dropdown"></div>
+    </header>
+
+    <!-- Quiz View -->
+    <main id="quiz-view" class="view quiz-view"></main>
+
+    <!-- Generator View -->
+    <main id="generator-view" class="view generator-view">
+      <div class="generator-card">
+        <h2 style="margin-bottom: 16px; text-align: center;">Create Hanzi Quiz</h2>
+        
+        <div class="tabs">
+          <div class="tab active" data-tab="form">Manual Form</div>
+          <div class="tab" data-tab="ai">AI Prompt</div>
+        </div>
+
+        <div id="tab-form" class="tab-content active">
+          <div class="form-group">
+            <label for="input-question">Question (English)</label>
+            <input type="text" id="input-question" class="form-control" placeholder="e.g. I love coding">
+          </div>
+
+          <div class="form-group">
+            <label>Answer Characters</label>
+            <div id="char-list"></div>
+            <button type="button" class="secondary" id="add-char-btn" style="width:100%; margin-top:8px;">+ Add Character</button>
+            <div class="help-text">Tip: Use the "Space" button to add gaps between words.</div>
+          </div>
+
+          <div class="actions">
+            <button type="button" class="secondary" id="reset-form-btn">Reset</button>
+            <button type="button" id="generate-btn">Generate & Load</button>
+          </div>
+        </div>
+
+        <div id="tab-ai" class="tab-content">
+          <p style="font-size: 14px; margin-bottom: 10px;">Copy this prompt to any AI chat. Paste the JSON response into a Base64 encoder and append to URL as <code>#payload=...</code></p>
+          <div class="prompt-box" id="ai-prompt-text"></div>
+          <button id="copy-prompt-btn" style="width: 100%;">Copy Prompt</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+<script>
+(() => {
+  const state = {
+    data: null,
+    activeIndex: 0,
+    boxStates: [],
+    log: [],
+    writer: null,
+    showContour: false,
+    history: JSON.parse(localStorage.getItem('hanzi_history') || '[]')
+  };
+
+  const els = {
+    quizView: document.getElementById('quiz-view'),
+    generatorView: document.getElementById('generator-view'),
+    charList: document.getElementById('char-list'),
+    inputQuestion: document.getElementById('input-question'),
+    addCharBtn: document.getElementById('add-char-btn'),
+    generateBtn: document.getElementById('generate-btn'),
+    resetFormBtn: document.getElementById('reset-form-btn'),
+    burgerBtn: document.getElementById('burger-btn'),
+    menuDropdown: document.getElementById('menu-dropdown'),
+    contourToggle: document.getElementById('contour-toggle'),
+    aiPromptText: document.getElementById('ai-prompt-text'),
+    copyPromptBtn: document.getElementById('copy-prompt-btn'),
+    tabs: document.querySelectorAll('.tab'),
+    tabContents: document.querySelectorAll('.tab-content')
+  };
+
+  const AI_PROMPT = `You are a Chinese character quiz generator. 
+When I give you an English sentence or phrase, output ONLY a valid JSON object with this exact structure:
+{
+  "q": "English translation prompt",
+  "a": [
+    {"c": "汉", "p": "hàn"},
+    {"c": "字", "p": "zì"}
+  ]
+}
+Rules:
+- "c" is a single Chinese character or a space/punctuation.
+- "p" is pinyin for that character (leave empty for spaces).
+- Keep arrays short (1-8 characters ideal).
+- Do not include markdown, explanations, or extra text. Just the JSON.`;
+
+  els.aiPromptText.textContent = AI_PROMPT;
+
+  // --- Generator Logic ---
+  let charFieldCount = 0;
+  function addCharField(char = '', pinyin = '') {
+    const row = document.createElement('div');
+    row.className = 'char-row';
+    row.innerHTML = `
+      <input type="text" class="form-control char-input" placeholder="字" maxlength="2" value="${char}" data-role="char">
+      <input type="text" class="form-control pinyin-input" placeholder="pinyin" value="${pinyin}" data-role="pinyin">
+      <button type="button" class="danger btn-icon" data-action="remove" title="Remove">×</button>
+      <button type="button" class="secondary btn-icon" data-action="space" title="Add Space">␣</button>
+    `;
+    els.charList.appendChild(row);
+    row.querySelector('[data-action="remove"]').onclick = () => row.remove();
+    row.querySelector('[data-action="space"]').onclick = () => addCharField(' ', '');
+  }
+
+  function collectFormData() {
+    const q = els.inputQuestion.value.trim();
+    const a = [];
+    els.charList.querySelectorAll('.char-row').forEach(row => {
+      const c = row.querySelector('[data-role="char"]').value.trim();
+      const p = row.querySelector('[data-role="pinyin"]').value.trim();
+      if (c) a.push({ c, p });
+    });
+    return { q, a };
+  }
+
+  function generatePayloadAndRedirect() {
+    const payload = collectFormData();
+    if (!payload.q || payload.a.length === 0) return alert('Please enter a question and at least one character.');
+    try {
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      window.location.hash = `payload=${encoded}`;
+    } catch (e) { alert('Error generating payload.'); }
+  }
+
+  // --- Payload Handling ---
+  function decodePayload(b64) {
+    try {
+      const obj = JSON.parse(decodeURIComponent(escape(atob(b64))));
+      if (!obj.q || !Array.isArray(obj.a)) throw new Error("Invalid structure");
+      return obj;
+    } catch (e) { return null; }
+  }
+
+  function initView(mode) {
+    if (mode === 'quiz') {
+      els.generatorView.classList.remove('active');
+      els.quizView.classList.add('active');
+    } else {
+      els.quizView.classList.remove('active');
+      els.quizView.innerHTML = '';
+      els.generatorView.classList.add('active');
+      if (els.charList.children.length === 0) addCharField();
+    }
+  }
+
+  function init() {
+    const hash = window.location.hash.slice(1);
+    const match = hash.match(/^payload=(.+)$/);
+    const payload = match ? decodePayload(match[1]) : null;
+    
+    if (!payload) {
+      initView('generator');
+      return;
+    }
+
+    loadData(payload);
+    saveToHistory(match[0]);
+    initView('quiz');
+    renderApp();
+    requestAnimationFrame(() => loadBox(0));
+  }
+
+  function loadData(data) {
+    state.data = data;
+    state.activeIndex = 0;
+    state.log = [];
+    state.boxStates = data.a.map((_, i) => ({ index: i, mistakes: 0, completed: false, char: data.a[i].c }));
+  }
+
+  function saveToHistory(hashStr) {
+    state.history = state.history.filter(h => h !== hashStr);
+    state.history.unshift(hashStr);
+    state.history = state.history.slice(0, 20);
+    localStorage.setItem('hanzi_history', JSON.stringify(state.history));
+    renderMenu();
+  }
+
+  // --- UI Rendering ---
+  function renderApp() {
+    els.quizView.innerHTML = `
+      <div class="row-2" id="question-text">${state.data.q}</div>
+      <div class="row-3" id="boxes-container"></div>
+      <div class="row-4">
+        <div id="canvas-container"><div id="character-target-div"></div></div>
+      </div>
+      <div class="row-5">
+        <textarea id="log" readonly placeholder="Drawing log will appear here..."></textarea>
+        <div class="log-actions"><button id="copy-log-btn">Copy Log</button></div>
+      </div>
+    `;
+
+    const boxContainer = document.getElementById('boxes-container');
+    state.data.a.forEach((item, i) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'box-wrap';
+      wrap.onclick = () => loadBox(i);
+      if (item.c.trim() === '') {
+        wrap.innerHTML = '<div class="spacer"></div>';
+      } else {
+        wrap.innerHTML = `
+          <div class="box" id="box-${i}">${item.c}</div>
+          <div class="pinyin" id="py-${i}">${item.p || ''}</div>
+        `;
+      }
+      boxContainer.appendChild(wrap);
+    });
+
+    document.getElementById('copy-log-btn').onclick = () => {
+      const log = document.getElementById('log');
+      navigator.clipboard.writeText(log.value).then(() => {
+        const btn = document.getElementById('copy-log-btn');
+        const orig = btn.textContent; btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 1500);
+      });
+    };
+    updateBoxUI();
+  }
+
+  function updateBoxUI() {
+    state.data?.a.forEach((_, i) => {
+      const box = document.getElementById(`box-${i}`);
+      if (!box) return;
+      const st = state.boxStates[i];
+      box.className = 'box';
+      if (i === state.activeIndex) box.classList.add('active');
+      if (st.completed) box.classList.add('complete');
+      else if (st.mistakes > 0) box.classList.add('in-progress');
+    });
+  }
+
+  function appendLog(msg) {
+    state.log.push(msg);
+    const log = document.getElementById('log');
+    if (log) log.value += msg + '\n';
+  }
+
+  function findNextIncomplete() {
+    return state.boxStates.findIndex((s, i) => !s.completed && i !== state.activeIndex);
+  }
+
+  // --- HanziWriter ---
+  function initWriter() {
+    const target = document.getElementById('character-target-div');
+    target.innerHTML = '';
+    if (state.writer) { state.writer.destroy(); state.writer = null; }
+    
+    const char = state.data?.a[state.activeIndex]?.c;
+    if (!char || char.trim() === '') return;
+
+    const container = document.getElementById('canvas-container');
+    const size = Math.min(container.clientWidth, container.clientHeight, 800);
+
+    state.writer = HanziWriter.create(target, char, {
+      width: size, height: size, showCharacter: state.showContour, padding: 5,
+      strokeAnimationSpeed: 1, strokeHighlightSpeed: 1.5
+    });
+
+    const attachQuiz = (w) => {
+      w.quiz({
+        onMistake: (sd) => {
+          state.boxStates[state.activeIndex].mistakes++;
+          appendLog(`[Box ${state.activeIndex + 1}] Mistake on stroke ${sd.strokeNum}. Total: ${sd.totalMistakes}`);
+          updateBoxUI();
+        },
+        onCorrectStroke: () => {},
+        onComplete: (summary) => {
+          state.boxStates[state.activeIndex].completed = true;
+          state.boxStates[state.activeIndex].mistakes = summary.totalMistakes;
+          appendLog(`[Box ${state.activeIndex + 1}] ✅ Completed! Mistakes: ${summary.totalMistakes}`);
+          updateBoxUI();
+          const next = findNextIncomplete();
+          if (next !== -1) setTimeout(() => loadBox(next), 1200);
+          else appendLog(`🎉 All characters completed for this question!`);
+        }
+      });
+    };
+    attachQuiz(state.writer);
+    updateBoxUI();
+  }
+
+  window.loadBox = (index) => {
+    state.activeIndex = index;
+    initWriter();
+  };
+
+  // Resize Handler
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (state.writer && state.data) {
+        state.writer.destroy();
+        state.writer = null;
+        const target = document.getElementById('character-target-div');
+        target.innerHTML = '';
+        const char = state.data.a[state.activeIndex].c;
+        const container = document.getElementById('canvas-container');
+        const size = Math.min(container.clientWidth, container.clientHeight, 800);
+        state.writer = HanziWriter.create(target, char, {
+          width: size, height: size, showCharacter: state.showContour, padding: 5,
+          strokeAnimationSpeed: 1, strokeHighlightSpeed: 1.5
+        });
+        const attachQuiz = (w) => {
+          w.quiz({
+            onMistake: (sd) => {
+              state.boxStates[state.activeIndex].mistakes++;
+              appendLog(`[Box ${state.activeIndex + 1}] Mistake on stroke ${sd.strokeNum}. Total: ${sd.totalMistakes}`);
+              updateBoxUI();
+            },
+            onCorrectStroke: () => {},
+            onComplete: (summary) => {
+              state.boxStates[state.activeIndex].completed = true;
+              state.boxStates[state.activeIndex].mistakes = summary.totalMistakes;
+              appendLog(`[Box ${state.activeIndex + 1}] ✅ Completed! Mistakes: ${summary.totalMistakes}`);
+              updateBoxUI();
+              const next = findNextIncomplete();
+              if (next !== -1) setTimeout(() => loadBox(next), 1200);
+              else appendLog(`🎉 All characters completed!`);
+            }
+          });
+        };
+        attachQuiz(state.writer);
+      }
+    }, 250);
+  });
+
+  // --- Menu & Tabs ---
+  function renderMenu() {
+    els.menuDropdown.innerHTML = '';
+    if (state.history.length === 0) {
+      els.menuDropdown.innerHTML = '<div class="menu-item" style="color:#999">No history yet</div>';
+      return;
+    }
+    state.history.forEach(hash => {
+      const item = document.createElement('div');
+      item.className = 'menu-item';
+      try {
+        const obj = decodePayload(hash.replace('payload=', ''));
+        item.textContent = obj.q || 'Saved session';
+      } catch { item.textContent = 'Saved session'; }
+      item.onclick = () => {
+        window.location.hash = hash;
+        els.menuDropdown.classList.remove('open');
+      };
+      els.menuDropdown.appendChild(item);
+    });
+  }
+
+  els.burgerBtn.onclick = (e) => { e.stopPropagation(); els.menuDropdown.classList.toggle('open'); };
+  document.addEventListener('click', (e) => {
+    if (!els.menuDropdown.contains(e.target) && e.target !== els.burgerBtn) els.menuDropdown.classList.remove('open');
+  });
+
+  els.contourToggle.onchange = (e) => {
+    state.showContour = e.target.checked;
+    if (state.writer && state.data) initWriter();
+  };
+
+  els.tabs.forEach(tab => {
+    tab.onclick = () => {
+      els.tabs.forEach(t => t.classList.remove('active'));
+      els.tabContents.forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+    };
+  });
+
+  els.addCharBtn.onclick = () => addCharField();
+  els.generateBtn.onclick = generatePayloadAndRedirect;
+  els.resetFormBtn.onclick = () => {
+    els.inputQuestion.value = '';
+    els.charList.innerHTML = '';
+    addCharField();
+  };
+  els.copyPromptBtn.onclick = () => {
+    navigator.clipboard.writeText(els.aiPromptText.textContent).then(() => {
+      const orig = els.copyPromptBtn.textContent; els.copyPromptBtn.textContent = 'Copied!';
+      setTimeout(() => els.copyPromptBtn.textContent = orig, 1500);
+    });
+  };
+
+  // --- Init ---
+  window.addEventListener('hashchange', init);
+  document.addEventListener('DOMContentLoaded', init);
+  renderMenu();
+})();
+</script>
+</body>
+</html>
