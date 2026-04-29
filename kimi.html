@@ -157,7 +157,9 @@
             font-size: 13px;
             color: #888;
             margin-top: 4px;
+            display: none;
         }
+        .question-hint.show { display: block; }
         
         .boxes-row {
             display: flex;
@@ -248,6 +250,21 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         }
         #character-target-div {
+            width: 100%;
+            height: 100%;
+        }
+        .grid-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: none;
+        }
+        .grid-overlay.show { display: block; }
+        .grid-overlay svg {
             width: 100%;
             height: 100%;
         }
@@ -497,7 +514,6 @@
     </style>
 </head>
 <body>
-    <!-- Side Menu -->
     <div class="overlay" id="overlay"></div>
     <div class="side-menu" id="sideMenu">
         <div class="menu-header">
@@ -509,42 +525,34 @@
         </div>
     </div>
 
-    <!-- Creator State (No Payload) -->
     <div class="creator-state" id="creatorState">
         <div class="creator-header">
-            <h1>📝 Hanzi Writer</h1>
+            <h1>Hanzi Writer</h1>
             <p>Create your own Chinese character quiz. Fill in the form below to generate a shareable link, or use the AI prompt to have an assistant generate one for you.</p>
         </div>
-        
         <div class="creator-form">
             <div class="form-group">
                 <label class="form-label">Question (English)</label>
                 <input type="text" class="form-input" id="creatorQuestion" placeholder="e.g., How do you say 'Hello' in Chinese?">
             </div>
-            
             <div class="form-group">
                 <label class="form-label">Answer (Chinese)</label>
                 <input type="text" class="form-input" id="creatorAnswer" placeholder="e.g., 你好">
                 <div class="form-hint">Type Chinese characters. Spaces will create word gaps. Non-Chinese characters will be shown but not drawn.</div>
             </div>
-            
             <div class="form-group" id="pinyinGroup" style="display:none;">
                 <label class="form-label">Pinyin</label>
                 <div class="form-hint">Enter pinyin for each Chinese character below:</div>
                 <div class="pinyin-list" id="pinyinList"></div>
             </div>
-            
             <div class="form-group">
                 <label class="form-label">Hint (Optional)</label>
                 <input type="text" class="form-input" id="creatorHint" placeholder="e.g., Two characters, first means 'you'">
             </div>
-            
             <button class="submit-btn" id="createQuizBtn">Create Quiz & Start</button>
-            
             <div class="divider">or</div>
-            
             <div class="ai-prompt-section">
-                <h3>🤖 Ask an AI to generate a link</h3>
+                <h3>Ask an AI to generate a link</h3>
                 <div class="ai-prompt-box">
                     <button class="copy-prompt-btn" id="copyPromptBtn">Copy</button>
                     <div id="aiPromptText"></div>
@@ -553,35 +561,35 @@
         </div>
     </div>
 
-    <!-- Quiz State -->
     <div class="quiz-state" id="quizState">
-        <!-- Row 1: Top Bar -->
         <div class="top-bar">
-            <button class="burger-btn" id="burgerBtn">☰</button>
+            <button class="burger-btn" id="burgerBtn">&#9776;</button>
             <div class="mode-toggles">
-                <button class="toggle-btn" id="contourToggle">Show Outline</button>
-                <button class="toggle-btn active" id="quizToggle">Quiz Mode</button>
+                <button class="toggle-btn" id="gridToggle">Grid</button>
+                <button class="toggle-btn" id="contourToggle">Contour</button>
+                <button class="toggle-btn" id="hintToggle">Hint</button>
                 <button class="toggle-btn" id="newQuizBtn">New Quiz</button>
             </div>
         </div>
-
-        <!-- Row 2: Question -->
         <div class="question-row">
             <div class="question-text" id="questionText">Loading...</div>
             <div class="question-hint" id="questionHint"></div>
         </div>
-
-        <!-- Row 3: Character Boxes -->
         <div class="boxes-row" id="boxesRow"></div>
-
-        <!-- Row 4: Canvas -->
         <div class="canvas-row">
             <div class="canvas-container" id="canvasContainer">
                 <div id="character-target-div"></div>
+                <div class="grid-overlay" id="gridOverlay">
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                        <line x1="50" y1="0" x2="50" y2="100" stroke="#ddd" stroke-width="0.5" stroke-dasharray="2,2"/>
+                        <line x1="0" y1="50" x2="100" y2="50" stroke="#ddd" stroke-width="0.5" stroke-dasharray="2,2"/>
+                        <line x1="0" y1="0" x2="100" y2="100" stroke="#ddd" stroke-width="0.5" stroke-dasharray="2,2"/>
+                        <line x1="100" y1="0" x2="0" y2="100" stroke="#ddd" stroke-width="0.5" stroke-dasharray="2,2"/>
+                        <rect x="0" y="0" width="100" height="100" fill="none" stroke="#ddd" stroke-width="0.5"/>
+                    </svg>
+                </div>
             </div>
         </div>
-
-        <!-- Row 5: Log -->
         <div class="log-row">
             <div class="log-header">
                 <span class="log-title">Session Log</span>
@@ -592,8 +600,6 @@
     </div>
 
     <script>
-        // ==================== UNICODE-SAFE BASE64 ====================
-        // btoa/atob only handle Latin1. These functions properly encode/decode Unicode.
         function utf8ToBase64(str) {
             const bytes = new TextEncoder().encode(str);
             let binary = '';
@@ -612,30 +618,53 @@
             return new TextDecoder().decode(bytes);
         }
 
-        // ==================== STATE MANAGEMENT ====================
         let currentQuiz = null;
         let activeBoxIndex = 0;
         let sessionLog = [];
         let showContour = false;
-        let quizMode = true;
+        let showGrid = false;
+        let showHint = false;
         let menuHistory = [];
         let currentPinyinMap = [];
+        let writerReady = false;
+        let currentWriter = null;
 
-        // ==================== LOCAL STORAGE ====================
         function loadHistory() {
             try {
                 const stored = localStorage.getItem('hanziHistory');
-                if (stored) {
-                    menuHistory = JSON.parse(stored);
-                }
-            } catch (e) {
-                menuHistory = [];
-            }
+                if (stored) menuHistory = JSON.parse(stored);
+            } catch (e) { menuHistory = []; }
         }
 
         function saveHistory() {
             try {
                 localStorage.setItem('hanziHistory', JSON.stringify(menuHistory));
+            } catch (e) {}
+        }
+
+        function loadSettings() {
+            try {
+                const stored = localStorage.getItem('hanziSettings');
+                if (stored) {
+                    const s = JSON.parse(stored);
+                    showContour = s.showContour || false;
+                    showGrid = s.showGrid || false;
+                    showHint = s.showHint || false;
+                }
+            } catch (e) {
+                showContour = false;
+                showGrid = false;
+                showHint = false;
+            }
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem('hanziSettings', JSON.stringify({
+                    showContour: showContour,
+                    showGrid: showGrid,
+                    showHint: showHint
+                }));
             } catch (e) {}
         }
 
@@ -659,7 +688,6 @@
             renderMenu();
         }
 
-        // ==================== MENU UI ====================
         function renderMenu() {
             const list = document.getElementById('menuList');
             if (menuHistory.length === 0) {
@@ -668,13 +696,8 @@
             }
             list.innerHTML = menuHistory.map(item => {
                 const date = new Date(item.timestamp);
-                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                return `
-                    <div class="menu-item" data-id="${item.id}">
-                        <div class="menu-item-question">${escapeHtml(item.question)}</div>
-                        <div class="menu-item-date">${dateStr} · ${item.answer}</div>
-                    </div>
-                `;
+                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                return '<div class="menu-item" data-id="' + item.id + '"><div class="menu-item-question">' + escapeHtml(item.question) + '</div><div class="menu-item-date">' + dateStr + ' &middot; ' + item.answer + '</div></div>';
             }).join('');
 
             list.querySelectorAll('.menu-item').forEach(el => {
@@ -700,23 +723,15 @@
             document.getElementById('overlay').classList.remove('show');
         }
 
-        // ==================== PAYLOAD PARSING ====================
         function parsePayload() {
             const hash = window.location.hash.slice(1);
             if (!hash) return null;
-            
             try {
                 const jsonStr = base64ToUtf8(hash);
                 const data = JSON.parse(jsonStr);
-                
-                if (!data.question || !data.answer) {
-                    console.error('Payload missing required fields');
-                    return null;
-                }
-                
+                if (!data.question || !data.answer) return null;
                 return processQuizData(data);
             } catch (e) {
-                console.error('Failed to parse payload:', e);
                 return null;
             }
         }
@@ -725,7 +740,6 @@
             const chars = [];
             const pinyin = data.pinyin || [];
             let pinyinIdx = 0;
-            
             for (let i = 0; i < data.answer.length; i++) {
                 const char = data.answer[i];
                 if (/\s/.test(char)) {
@@ -742,16 +756,9 @@
                     });
                     pinyinIdx++;
                 } else {
-                    chars.push({
-                        type: 'other',
-                        char: char,
-                        pinyin: '',
-                        completed: false,
-                        mistakes: 0
-                    });
+                    chars.push({ type: 'other', char: char, pinyin: '', completed: false, mistakes: 0 });
                 }
             }
-            
             return {
                 id: data.id || Date.now().toString(),
                 question: data.question,
@@ -773,7 +780,6 @@
             return utf8ToBase64(JSON.stringify(payload));
         }
 
-        // ==================== CREATOR FORM ====================
         function initCreator() {
             const answerInput = document.getElementById('creatorAnswer');
             const pinyinGroup = document.getElementById('pinyinGroup');
@@ -783,22 +789,14 @@
                 const text = answerInput.value;
                 const hanziChars = [];
                 for (let char of text) {
-                    if (/[\u4e00-\u9fff]/.test(char)) {
-                        hanziChars.push(char);
-                    }
+                    if (/[\u4e00-\u9fff]/.test(char)) hanziChars.push(char);
                 }
-                
                 if (hanziChars.length > 0) {
                     pinyinGroup.style.display = 'block';
-                    pinyinList.innerHTML = hanziChars.map((char, idx) => `
-                        <div class="pinyin-chip">
-                            <span class="hanzi-char">${char}</span>
-                            <input type="text" class="pinyin-input" data-idx="${idx}" placeholder="pinyin" value="${currentPinyinMap[idx] || ''}">
-                        </div>
-                    `).join('');
-                    
+                    pinyinList.innerHTML = hanziChars.map((char, idx) => {
+                        return '<div class="pinyin-chip"><span class="hanzi-char">' + char + '</span><input type="text" class="pinyin-input" data-idx="' + idx + '" placeholder="pinyin" value="' + (currentPinyinMap[idx] || '') + '"></div>';
+                    }).join('');
                     pinyinList.querySelectorAll('.pinyin-input').forEach((input, idx) => {
-                        input.value = currentPinyinMap[idx] || '';
                         input.addEventListener('input', (e) => {
                             currentPinyinMap[idx] = e.target.value;
                         });
@@ -817,17 +815,14 @@
             const question = document.getElementById('creatorQuestion').value.trim();
             const answer = document.getElementById('creatorAnswer').value;
             const hint = document.getElementById('creatorHint').value.trim();
-            
             if (!question || !answer) {
                 alert('Please fill in both Question and Answer fields.');
                 return;
             }
-            
             const pinyin = [];
             document.querySelectorAll('.pinyin-input').forEach(input => {
                 pinyin.push(input.value.trim());
             });
-            
             const quizData = {
                 id: Date.now().toString(),
                 question: question,
@@ -835,62 +830,28 @@
                 pinyin: pinyin,
                 hint: hint
             };
-            
             const hash = encodePayload(quizData);
             window.location.hash = hash;
-            
-            const quiz = processQuizData(quizData);
-            loadQuiz(quiz);
+            loadQuiz(processQuizData(quizData));
         }
 
         function generateAiPrompt() {
-            return `You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.
-
-To generate a quiz link, create a JSON object with these fields:
-- "question": The English question/prompt (e.g., "How do you say 'Hello' in Chinese?")
-- "answer": The Chinese answer as a string (e.g., "你好")
-- "pinyin": Array of pinyin for each Chinese character (e.g., ["nǐ", "hǎo"])
-- "hint": Optional hint text
-- "id": Optional unique ID
-
-Then base64 encode the JSON and append it as a hash to this URL:
-${window.location.origin}${window.location.pathname}#<base64_encoded_json>
-
-Example payload before encoding:
-{
-  "question": "How do you say 'Thank you' in Chinese?",
-  "answer": "谢谢",
-  "pinyin": ["xiè", "xie"],
-  "hint": "Two identical characters"
-}
-
-Rules:
-- Only include Chinese characters in "answer" that should be drawn (hanzi)
-- Spaces in the answer string will be rendered as word separators
-- Pinyin array length must match the number of hanzi characters
-- The app tracks stroke-by-stroke progress and mistakes
-- Users can copy their session log to share back with you for analysis`;
+            return 'You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.\n\nTo generate a quiz link, create a JSON object with these fields:\n- "question": The English question/prompt (e.g., "How do you say \'Hello\' in Chinese?")\n- "answer": The Chinese answer as a string (e.g., "你好")\n- "pinyin": Array of pinyin for each Chinese character (e.g., ["nǐ", "hǎo"])\n- "hint": Optional hint text\n- "id": Optional unique ID\n\nThen base64 encode the JSON and append it as a hash to this URL:\n' + window.location.origin + window.location.pathname + '#<base64_encoded_json>\n\nExample payload before encoding:\n{\n  "question": "How do you say \'Thank you\' in Chinese?",\n  "answer": "谢谢",\n  "pinyin": ["xiè", "xie"],\n  "hint": "Two identical characters"\n}\n\nRules:\n- Only include Chinese characters in "answer" that should be drawn (hanzi)\n- Spaces in the answer string will be rendered as word separators\n- Pinyin array length must match the number of hanzi characters\n- The app tracks stroke-by-stroke progress and mistakes\n- Users can copy their session log to share back with you for analysis';
         }
 
         function copyAiPrompt() {
-            const text = generateAiPrompt();
-            navigator.clipboard.writeText(text).then(() => {
+            navigator.clipboard.writeText(generateAiPrompt()).then(() => {
                 const btn = document.getElementById('copyPromptBtn');
                 btn.textContent = 'Copied!';
                 setTimeout(() => btn.textContent = 'Copy', 2000);
             });
         }
 
-        // ==================== UI RENDERING ====================
         function renderBoxes() {
             const row = document.getElementById('boxesRow');
             if (!currentQuiz) return;
-            
             row.innerHTML = currentQuiz.characters.map((char, idx) => {
-                if (char.type === 'space') {
-                    return '<div class="char-box space"></div>';
-                }
-                
+                if (char.type === 'space') return '<div class="char-box space"></div>';
                 let statusClass = '';
                 let statusDot = '';
                 if (char.completed) {
@@ -900,16 +861,8 @@ Rules:
                     statusClass = 'in-progress';
                     statusDot = 'in-progress';
                 }
-                
                 const isActive = idx === activeBoxIndex;
-                
-                return `
-                    <div class="char-box ${statusClass} ${isActive ? 'active' : ''}" data-index="${idx}">
-                        <div class="char-status ${statusDot}"></div>
-                        <div class="char-display">${char.completed ? char.char : '?'}</div>
-                        ${char.pinyin ? `<div class="char-pinyin">${char.pinyin}</div>` : ''}
-                    </div>
-                `;
+                return '<div class="char-box ' + statusClass + (isActive ? ' active' : '') + '" data-index="' + idx + '"><div class="char-status ' + statusDot + '"></div><div class="char-display">' + (char.completed ? char.char : '?') + '</div>' + (char.pinyin ? '<div class="char-pinyin">' + char.pinyin + '</div>' : '') + '</div>';
             }).join('');
             
             row.querySelectorAll('.char-box:not(.space)').forEach(box => {
@@ -934,28 +887,26 @@ Rules:
             renderBoxes();
         }
 
-        // ==================== HANZI WRITER ====================
-        let currentWriter = null;
-
         function loadActiveCharacter() {
             if (!currentQuiz) return;
-            
             const char = currentQuiz.characters[activeBoxIndex];
             if (!char || char.type !== 'hanzi') {
                 findNextHanzi();
                 return;
             }
-            
             const container = document.getElementById('character-target-div');
             container.innerHTML = '';
-            
             const containerSize = document.getElementById('canvasContainer').clientWidth;
+            writerReady = false;
             
             currentWriter = HanziWriter.create('character-target-div', char.char, {
                 width: containerSize,
                 height: containerSize,
                 showCharacter: false,
                 showOutline: showContour,
+                showHintAfterMisses: false,
+                highlightOnComplete: true,
+                highlightColor: '#e94560',
                 padding: 5,
                 strokeAnimationSpeed: 1,
                 delayBetweenStrokes: 0,
@@ -963,12 +914,19 @@ Rules:
                 outlineColor: '#ddd',
                 drawingColor: '#e94560',
                 drawingWidth: 4,
-                highlightColor: '#e94560',
                 highlightSpeed: 1,
-                highlightCompleteColor: '#4ecca3'
+                highlightCompleteColor: '#4ecca3',
+                onLoadCharDataSuccess: function() {
+                    writerReady = true;
+                    if (showContour) {
+                        currentWriter.showOutline({ duration: 0 });
+                    } else {
+                        currentWriter.hideOutline({ duration: 0 });
+                    }
+                }
             });
             
-            if (quizMode && !char.completed) {
+            if (!char.completed) {
                 startQuiz();
             } else {
                 currentWriter.showCharacter();
@@ -977,46 +935,39 @@ Rules:
 
         function startQuiz() {
             if (!currentWriter) return;
-            
             const char = currentQuiz.characters[activeBoxIndex];
             const startMistakes = char.mistakes || 0;
+            const charName = char.char;
             
             currentWriter.quiz({
                 onMistake: function(strokeData) {
                     char.mistakes = startMistakes + strokeData.totalMistakes;
-                    updateBoxState(activeBoxIndex, { 
+                    updateBoxState(activeBoxIndex, {
                         mistakes: char.mistakes,
                         strokesCompleted: strokeData.strokeNum - 1
                     });
-                    
-                    logEvent('mistake', `Stroke ${strokeData.strokeNum}: mistake (#${strokeData.totalMistakes} total)`);
+                    logEvent('mistake', '❌ [' + charName + '] stroke ' + strokeData.strokeNum + ' mistake (total: ' + strokeData.totalMistakes + ')');
                 },
                 onCorrectStroke: function(strokeData) {
                     updateBoxState(activeBoxIndex, {
                         strokesCompleted: strokeData.strokeNum,
                         totalStrokes: strokeData.strokeNum + strokeData.strokesRemaining
                     });
-                    
-                    logEvent('correct', `Stroke ${strokeData.strokeNum} correct (${strokeData.strokesRemaining} remaining)`);
+                    logEvent('correct', '✅ [' + charName + '] stroke ' + strokeData.strokeNum + ' correct!');
                 },
                 onComplete: function(summaryData) {
                     updateBoxState(activeBoxIndex, {
                         completed: true,
                         strokesCompleted: summaryData.totalStrokes
                     });
-                    
-                    logEvent('complete', `Completed "${summaryData.character}" with ${summaryData.totalMistakes} mistakes`);
-                    
-                    setTimeout(() => {
-                        findNextHanzi();
-                    }, 800);
+                    logEvent('complete', '🎉 [' + summaryData.character + '] COMPLETED! Total mistakes: ' + summaryData.totalMistakes);
+                    setTimeout(() => { findNextHanzi(); }, 800);
                 }
             });
         }
 
         function findNextHanzi() {
             if (!currentQuiz) return;
-            
             for (let i = activeBoxIndex + 1; i < currentQuiz.characters.length; i++) {
                 const char = currentQuiz.characters[i];
                 if (char.type === 'hanzi' && !char.completed) {
@@ -1026,7 +977,6 @@ Rules:
                     return;
                 }
             }
-            
             for (let i = 0; i < currentQuiz.characters.length; i++) {
                 const char = currentQuiz.characters[i];
                 if (char.type === 'hanzi' && !char.completed) {
@@ -1036,51 +986,42 @@ Rules:
                     return;
                 }
             }
-            
             logEvent('complete', '🎉 All characters completed!');
         }
 
-        // ==================== LOGGING ====================
         function logEvent(type, message) {
-            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
-            const entry = { type, message, timestamp };
-            sessionLog.push(entry);
-            
+            const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            sessionLog.push({ type, message, timestamp });
             const logContent = document.getElementById('logContent');
             const div = document.createElement('div');
-            div.className = `log-entry ${type}`;
-            div.textContent = `[${timestamp}] ${message}`;
+            div.className = 'log-entry ' + type;
+            div.textContent = '[' + timestamp + '] ' + message;
             logContent.appendChild(div);
             logContent.scrollTop = logContent.scrollHeight;
         }
 
         function getLogText() {
             if (!currentQuiz) return '';
-            
-            let text = `HANZI WRITER SESSION LOG\n`;
-            text += `Question: ${currentQuiz.question}\n`;
-            text += `Answer: ${currentQuiz.answer}\n`;
-            text += `Date: ${new Date().toLocaleString()}\n`;
-            text += `═══════════════════════════════════════\n\n`;
-            
+            let text = 'HANZI WRITER SESSION LOG\n';
+            text += 'Question: ' + currentQuiz.question + '\n';
+            text += 'Answer: ' + currentQuiz.answer + '\n';
+            text += 'Date: ' + new Date().toLocaleString() + '\n';
+            text += '═══════════════════════════════════════\n\n';
             sessionLog.forEach(entry => {
-                text += `[${entry.timestamp}] ${entry.message}\n`;
+                text += '[' + entry.timestamp + '] ' + entry.message + '\n';
             });
-            
-            text += `\n═══════════════════════════════════════\n`;
-            text += `Character Summary:\n`;
+            text += '\n═══════════════════════════════════════\n';
+            text += 'Character Summary:\n';
             currentQuiz.characters.forEach((char) => {
                 if (char.type === 'hanzi') {
-                    text += `${char.char} (${char.pinyin}): ${char.completed ? '✓' : '○'} Mistakes: ${char.mistakes}\n`;
+                    text += char.char + ' (' + char.pinyin + '): ' + (char.completed ? '✓' : '○') + ' Mistakes: ' + char.mistakes + '\n';
                 }
             });
-            
             return text;
         }
 
         function copyLog() {
-            const text = getLogText();
-            navigator.clipboard.writeText(text).then(() => {
+            navigator.clipboard.writeText(getLogText()).then(() => {
                 const btn = document.getElementById('copyLogBtn');
                 btn.textContent = 'Copied!';
                 btn.classList.add('copied');
@@ -1091,29 +1032,25 @@ Rules:
             });
         }
 
-        // ==================== QUIZ LOADING ====================
         function loadQuiz(data) {
             currentQuiz = data;
             activeBoxIndex = 0;
             sessionLog = [];
             currentPinyinMap = [];
-            
             for (let i = 0; i < currentQuiz.characters.length; i++) {
                 if (currentQuiz.characters[i].type === 'hanzi') {
                     activeBoxIndex = i;
                     break;
                 }
             }
-            
             document.getElementById('questionText').textContent = currentQuiz.question;
-            document.getElementById('questionHint').textContent = currentQuiz.hint || `Write: ${currentQuiz.answer}`;
+            const hintEl = document.getElementById('questionHint');
+            hintEl.textContent = currentQuiz.hint || 'Write: ' + currentQuiz.answer;
+            hintEl.classList.toggle('show', showHint);
             document.getElementById('logContent').innerHTML = '';
-            
-            logEvent('info', `Started quiz: ${currentQuiz.question}`);
-            
+            logEvent('info', '📚 Loaded: "' + currentQuiz.question + '" — ' + currentQuiz.characters.filter(c => c.type === 'hanzi').length + ' character(s)');
             document.getElementById('creatorState').classList.remove('show');
             document.getElementById('quizState').classList.add('show');
-            
             renderBoxes();
             loadActiveCharacter();
             addToHistory(currentQuiz);
@@ -1131,65 +1068,70 @@ Rules:
             window.location.hash = '';
         }
 
-        // ==================== TOGGLES ====================
         function toggleContour() {
             showContour = !showContour;
             document.getElementById('contourToggle').classList.toggle('active', showContour);
-            if (currentWriter) {
-                loadActiveCharacter();
+            saveSettings();
+            if (currentWriter && writerReady) {
+                if (showContour) {
+                    currentWriter.showOutline({ duration: 200 });
+                } else {
+                    currentWriter.hideOutline({ duration: 200 });
+                }
             }
         }
 
-        function toggleQuizMode() {
-            quizMode = !quizMode;
-            document.getElementById('quizToggle').classList.toggle('active', quizMode);
-            loadActiveCharacter();
+        function toggleGrid() {
+            showGrid = !showGrid;
+            document.getElementById('gridToggle').classList.toggle('active', showGrid);
+            saveSettings();
+            document.getElementById('gridOverlay').classList.toggle('show', showGrid);
         }
 
-        // ==================== UTILS ====================
+        function toggleHint() {
+            showHint = !showHint;
+            document.getElementById('hintToggle').classList.toggle('active', showHint);
+            saveSettings();
+            document.getElementById('questionHint').classList.toggle('show', showHint);
+        }
+
         function escapeHtml(text) {
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
         }
 
-        // ==================== INIT ====================
         function init() {
             loadHistory();
+            loadSettings();
             renderMenu();
             initCreator();
-            
             document.getElementById('aiPromptText').textContent = generateAiPrompt();
+            if (showContour) document.getElementById('contourToggle').classList.add('active');
+            if (showGrid) document.getElementById('gridToggle').classList.add('active');
+            if (showHint) document.getElementById('hintToggle').classList.add('active');
             
             document.getElementById('burgerBtn').addEventListener('click', openMenu);
             document.getElementById('closeMenu').addEventListener('click', closeMenu);
             document.getElementById('overlay').addEventListener('click', closeMenu);
             document.getElementById('contourToggle').addEventListener('click', toggleContour);
-            document.getElementById('quizToggle').addEventListener('click', toggleQuizMode);
+            document.getElementById('gridToggle').addEventListener('click', toggleGrid);
+            document.getElementById('hintToggle').addEventListener('click', toggleHint);
             document.getElementById('copyLogBtn').addEventListener('click', copyLog);
             document.getElementById('newQuizBtn').addEventListener('click', showCreator);
             
             window.addEventListener('resize', () => {
-                if (currentQuiz) {
-                    loadActiveCharacter();
-                }
+                if (currentQuiz) loadActiveCharacter();
             });
-            
             window.addEventListener('hashchange', () => {
                 const quiz = parsePayload();
-                if (quiz) {
-                    loadQuiz(quiz);
-                } else {
-                    showCreator();
-                }
+                if (quiz) loadQuiz(quiz);
+                else showCreator();
             });
             
             const quiz = parsePayload();
-            if (quiz) {
-                loadQuiz(quiz);
-            } else {
-                document.getElementById('creatorState').classList.add('show');
-            }
+            if (quiz) loadQuiz(quiz);
+            else document.getElementById('creatorState').classList.add('show');
         }
 
         init();

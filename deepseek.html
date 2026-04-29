@@ -161,28 +161,28 @@
             justify-content: center;
             font-size: 2rem;
             font-weight: 500;
+            position: relative;
         }
         .char-box.state-none { background: #f1f5f9; border: 1px solid #cbd5e1; }
         .char-box.state-started { background: #fef9c3; border: 1px solid #eab308; }
         .char-box.state-completed { background: #bbf7d0; border: 1px solid #22c55e; }
-        /* Hide character until completed */
-        .char-box.state-none .char-text, .char-box.state-started .char-text {
-            display: none;
-        }
+        
         .char-box .char-text {
+            display: none;
             font-size: 2rem;
+        }
+        .char-box.state-completed .char-text {
+            display: inline;
         }
         .char-box.state-none::before, .char-box.state-started::before {
             content: "?";
             font-size: 2rem;
             font-weight: bold;
             color: #94a3b8;
-        }
-        .char-box.state-completed .char-text {
-            display: inline;
-        }
-        .char-box.state-completed::before {
-            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
         
         .pinyin-label {
@@ -259,7 +259,7 @@
         }
         
         .menu-panel {
-            width: 300px;
+            width: 320px;
             background: white;
             height: 100%;
             padding: 24px 16px;
@@ -294,29 +294,101 @@
             color: #ef4444;
             cursor: pointer;
             font-size: 1.1rem;
+            padding: 0 4px;
         }
         
-        .ai-prompt-area {
-            padding: 20px;
-            background: #fef9e3;
-            border-radius: 24px;
-            margin: 16px;
-            text-align: center;
-        }
-        
-        textarea {
-            width: 100%;
-            border-radius: 16px;
-            border: 1px solid #cbd5e1;
+        .close-menu {
+            background: #e2e8f0;
+            border: none;
             padding: 10px;
-            font-family: monospace;
-            font-size: 0.7rem;
-            margin: 12px 0;
+            border-radius: 40px;
+            margin-top: 8px;
+            cursor: pointer;
         }
         
-        button { cursor: pointer; }
-        .close-menu { background: #e2e8f0; border: none; padding: 10px; border-radius: 40px; margin-top: 8px; }
-        .error-badge { color: #dc2626; text-align: center; padding: 20px; font-size: 0.8rem; }
+        /* Landing page builder UI */
+        .builder-panel {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 20px;
+            margin: 16px;
+        }
+        
+        .builder-panel h3 {
+            margin: 0 0 12px 0;
+            font-size: 1.2rem;
+        }
+        
+        .builder-input {
+            background: white;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .builder-input label {
+            display: block;
+            color: #334155;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .builder-input input, .builder-input textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-family: monospace;
+        }
+        
+        .builder-input textarea {
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        
+        .pinyin-group {
+            background: #f8fafc;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .generate-btn {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+        
+        .result-link {
+            background: #1e293b;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 12px;
+            word-break: break-all;
+            font-size: 0.7rem;
+            font-family: monospace;
+        }
+        
+        .copy-link-btn {
+            background: #3b82f6;
+            margin-top: 8px;
+            padding: 6px;
+        }
+        
+        .char-preview {
+            display: inline-block;
+            font-size: 1.2rem;
+            margin-left: 8px;
+        }
         
         @media (max-width: 550px) {
             .ctrl-btn { font-size: 0.7rem; padding: 4px 8px; }
@@ -383,6 +455,7 @@
         logEntries.push(`[${time}] ${msg}`);
         if (logEntries.length > 500) logEntries.shift();
         renderLog();
+        saveHistoryToLocal();
     }
     
     function renderLog() {
@@ -408,15 +481,15 @@
         navigator.clipboard.writeText(logEntries.join('\n')).then(() => addLog('📋 Log copied to clipboard'));
     });
     
-    // Landing page (clear payload)
+    // Landing page (show builder UI)
     landingLinkBtn.addEventListener('click', (e) => {
         e.preventDefault();
         window.location.hash = '';
         currentPayload = null;
         boxesData.forEach(b => { if (b.writer) try { b.writer.destroy(); } catch(e) {} });
         boxesData = [];
-        showEmptyPrompt();
-        addLog('🏠 Cleared session. Go to landing page.');
+        showBuilderUI();
+        addLog('🏠 Switched to lesson builder');
     });
     
     // Destroy writer
@@ -427,7 +500,7 @@
         }
     }
     
-    // Update box card visual with "?" until completed
+    // Update box card visual
     function updateBoxCardVisual(idx) {
         const card = document.querySelector(`.hanzi-card[data-idx='${idx}']`);
         if (!card) return;
@@ -436,12 +509,11 @@
         charDiv.classList.remove('state-none', 'state-started', 'state-completed');
         charDiv.classList.add(`state-${state}`);
         
-        // Update active highlight
         document.querySelectorAll('.hanzi-card').forEach(c => c.classList.remove('active-card'));
         card.classList.add('active-card');
     }
     
-    // Render boxes - characters show as "?" until completed
+    // Render boxes
     function renderBoxes() {
         if (!currentPayload || !boxesData.length) {
             boxesContainer.innerHTML = '<div style="padding:12px">📦 No characters loaded</div>';
@@ -452,10 +524,9 @@
             const card = document.createElement('div');
             card.className = 'hanzi-card';
             card.setAttribute('data-idx', idx);
-            const displayChar = box.character;
             card.innerHTML = `
                 <div class="char-box state-${box.state}">
-                    <span class="char-text" style="display: ${box.state === 'completed' ? 'inline' : 'none'}">${displayChar}</span>
+                    <span class="char-text">${box.character}</span>
                 </div>
                 <div class="pinyin-label">${box.pinyin || ''}</div>
             `;
@@ -471,24 +542,7 @@
         if (activeCard) activeCard.classList.add('active-card');
     }
     
-    // Apply writer settings (grid, contour)
-    function applyWriterSettings(writer, containerId, character, size) {
-        // Recreate with new settings if needed
-        if (writer) destroyWriter(boxesData[activeBoxIndex]);
-        const newWriter = HanziWriter.create(containerId, character, {
-            width: size,
-            height: size,
-            showCharacter: false,
-            padding: 8,
-            showOutline: showContour,
-            showGrid: showGrid,
-            strokeColor: '#3b82f6',
-            radicalColor: '#cbd5e1'
-        });
-        return newWriter;
-    }
-    
-    // Load active canvas
+    // Load active canvas - NO radical colors, only one stroke color
     function loadActiveCanvas() {
         if (!currentPayload || !boxesData.length) return;
         const box = boxesData[activeBoxIndex];
@@ -508,6 +562,7 @@
         const size = Math.min(rect.width, rect.height, 400);
         
         try {
+            // Use single color for all strokes - no radical distinction
             const writer = HanziWriter.create(containerId, box.character, {
                 width: size,
                 height: size,
@@ -515,8 +570,9 @@
                 padding: 8,
                 showOutline: showContour,
                 showGrid: showGrid,
-                strokeColor: '#3b82f6',
-                radicalColor: '#cbd5e1'
+                strokeColor: '#1e293b',      // Dark slate for all strokes
+                radicalColor: null,           // No separate radical color
+                renderDemoStrokeHighlight: false
             });
             
             box.writer = writer;
@@ -542,7 +598,7 @@
                             addLog(`🎉 [${box.character}] COMPLETED! Total mistakes: ${summary.totalMistakes}`);
                             box.state = 'completed';
                             updateBoxCardVisual(activeBoxIndex);
-                            renderBoxes(); // Refresh to show character instead of "?"
+                            renderBoxes();
                             if (box.writer) {
                                 try {
                                     box.writer.setCharacter(box.character);
@@ -556,13 +612,22 @@
             
         } catch(err) {
             addLog(`⚠️ Error loading "${box.character}": ${err.message}`);
-            activeCanvasDiv.innerHTML = `<div class="error-badge">⚠️ "${box.character}" not supported</div>`;
+            activeCanvasDiv.innerHTML = `<div style="text-align:center; padding:2rem; color:#dc2626;">⚠️ "${box.character}" not supported</div>`;
         }
     }
     
-    // Apply payload with proper UTF-8 handling
+    // Apply payload
     function applyPayload(payload) {
+        // Save to history if different from current
         if (currentPayload && JSON.stringify(currentPayload) !== JSON.stringify(payload)) {
+            const exists = historyEntries.some(e => JSON.stringify(e) === JSON.stringify(payload));
+            if (!exists) {
+                historyEntries.unshift(payload);
+                if (historyEntries.length > 20) historyEntries.pop();
+                saveHistoryToLocal();
+            }
+        } else if (!currentPayload) {
+            // First load
             const exists = historyEntries.some(e => JSON.stringify(e) === JSON.stringify(payload));
             if (!exists) {
                 historyEntries.unshift(payload);
@@ -581,15 +646,13 @@
             hintRow.classList.remove('visible');
         }
         
-        // Parse answer string into characters (handle spaces as separators)
+        // Parse answer string into characters
         const answerStr = payload.answer;
         const pinyinArray = payload.pinyin || [];
         const characters = [];
         
-        // Split by spaces to preserve word boundaries, but each character is separate
-        const words = answerStr.split(/\s+/);
-        for (let word of words) {
-            for (let ch of word) {
+        for (let ch of answerStr) {
+            if (ch.trim() && !ch.match(/\s/)) {
                 characters.push(ch);
             }
         }
@@ -615,7 +678,7 @@
         addLog(`📚 Loaded: "${payload.question}" — ${boxesData.length} character(s)`);
     }
     
-    // Base64 UTF-8 decode
+    // Base64 UTF-8 handling
     function base64ToUtf8(str) {
         try {
             const binary = atob(str);
@@ -625,6 +688,15 @@
         } catch(e) {
             return atob(str);
         }
+    }
+    
+    function utf8ToBase64(str) {
+        const bytes = new TextEncoder().encode(str);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) {
+            binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
     }
     
     // Load from URL hash
@@ -649,7 +721,7 @@
         return false;
     }
     
-    // Save/load settings to localStorage
+    // Save/load settings
     function saveSettings() {
         localStorage.setItem('hanzi_settings', JSON.stringify({
             showContour, showGrid, showHint
@@ -666,34 +738,132 @@
                 showHint = settings.showHint || false;
             }
         } catch(e) {}
-        // Update button UI
         toggleContourBtn.innerText = showContour ? "📐 Contour ON" : "✍️ Contour OFF";
         toggleContourBtn.classList.toggle('active', showContour);
         toggleGridBtn.innerText = showGrid ? "🔲 Grid ON" : "🔲 Grid OFF";
         toggleGridBtn.classList.toggle('active', showGrid);
         toggleHintBtn.innerText = showHint ? "💡 Hint ON" : "💡 Hint OFF";
         toggleHintBtn.classList.toggle('active', showHint);
-        
-        if (showHint && currentHint) {
-            hintRow.innerText = `💡 Hint: ${currentHint}`;
-            hintRow.classList.add('visible');
-        } else {
-            hintRow.classList.remove('visible');
-        }
     }
     
-    // Save history
+    // Save history with logs too
     function saveHistoryToLocal() {
         try {
-            localStorage.setItem('hanzi_history_v4', JSON.stringify(historyEntries));
+            const toStore = {
+                history: historyEntries,
+                logs: logEntries.slice(-100)
+            };
+            localStorage.setItem('hanzi_history_v5', JSON.stringify(toStore));
         } catch(e) {}
     }
     
     function loadHistoryFromLocal() {
         try {
-            const stored = localStorage.getItem('hanzi_history_v4');
-            if (stored) historyEntries = JSON.parse(stored).slice(0, 20);
+            const stored = localStorage.getItem('hanzi_history_v5');
+            if (stored) {
+                const data = JSON.parse(stored);
+                historyEntries = (data.history || []).slice(0, 20);
+                logEntries = data.logs || [];
+                renderLog();
+            }
         } catch(e) {}
+    }
+    
+    // Builder UI - helpful landing page
+    function showBuilderUI() {
+        questionEl.innerText = "🏮 Hanzi Lesson Builder";
+        boxesContainer.innerHTML = '';
+        
+        const builderHTML = `
+            <div class="builder-panel">
+                <h3><i class="fas fa-magic"></i> Create Your Lesson</h3>
+                <div class="builder-input">
+                    <label>📝 Question (English):</label>
+                    <input type="text" id="builderQuestion" placeholder="e.g., How do you say 'Thank you' in Chinese?" value="How do you say 'Thank you' in Chinese?">
+                </div>
+                <div class="builder-input">
+                    <label>汉字 Answer (Chinese characters):</label>
+                    <input type="text" id="builderAnswer" placeholder="e.g., 谢谢" value="谢谢">
+                    <div id="charCount" style="font-size:0.7rem; margin-top:4px; color:#cbd5e1;"></div>
+                </div>
+                <div class="builder-input">
+                    <label>🎵 Pinyin (space or comma separated, matching characters):</label>
+                    <input type="text" id="builderPinyin" placeholder="e.g., xiè xie" value="xiè xie">
+                </div>
+                <div class="builder-input">
+                    <label>💡 Hint (optional):</label>
+                    <textarea id="builderHint" rows="2" placeholder="e.g., Two identical characters meaning gratitude"></textarea>
+                </div>
+                <button class="generate-btn" id="generateLessonBtn"><i class="fas fa-link"></i> Generate Practice Link</button>
+                <div id="generatedLinkContainer" style="display:none;">
+                    <div class="result-link" id="generatedLink"></div>
+                    <button id="copyLinkBtn" class="generate-btn copy-link-btn" style="background:#3b82f6;">📋 Copy Link</button>
+                    <button id="useLinkBtn" class="generate-btn copy-link-btn" style="background:#8b5cf6;">🎯 Start Practice</button>
+                </div>
+            </div>
+            <div style="padding: 16px; text-align: center; font-size:0.75rem; color:#64748b;">
+                <i class="fas fa-info-circle"></i> Your practice history is saved automatically
+            </div>
+        `;
+        
+        boxesContainer.innerHTML = builderHTML;
+        activeCanvasDiv.innerHTML = '<div style="text-align:center; padding:2rem; color:#94a3b8;"><i class="fas fa-pencil-alt"></i> Build a lesson above to start practicing</div>';
+        
+        // Add event listener to show char count
+        const answerInput = document.getElementById('builderAnswer');
+        const charCount = document.getElementById('charCount');
+        if (answerInput) {
+            answerInput.addEventListener('input', () => {
+                const chars = answerInput.value.replace(/\s/g, '');
+                charCount.innerHTML = `📊 ${chars.length} character(s) detected`;
+            });
+            charCount.innerHTML = `📊 ${answerInput.value.replace(/\s/g, '').length} character(s) detected`;
+        }
+        
+        document.getElementById('generateLessonBtn')?.addEventListener('click', () => {
+            const question = document.getElementById('builderQuestion').value;
+            const answer = document.getElementById('builderAnswer').value;
+            let pinyinStr = document.getElementById('builderPinyin').value;
+            const hint = document.getElementById('builderHint').value;
+            
+            if (!question || !answer) {
+                alert('Please fill in question and answer');
+                return;
+            }
+            
+            // Clean answer: remove spaces, get characters
+            const cleanAnswer = answer.replace(/\s/g, '');
+            const pinyinArray = pinyinStr.split(/[\s,]+/).filter(p => p.trim());
+            
+            if (pinyinArray.length !== cleanAnswer.length) {
+                alert(`Pinyin count (${pinyinArray.length}) doesn't match character count (${cleanAnswer.length}). Please adjust.`);
+                return;
+            }
+            
+            const payload = {
+                question: question,
+                answer: cleanAnswer,
+                pinyin: pinyinArray,
+                hint: hint || ""
+            };
+            
+            const jsonStr = JSON.stringify(payload);
+            const base64 = utf8ToBase64(jsonStr);
+            const url = window.location.origin + window.location.pathname + '#' + base64;
+            
+            document.getElementById('generatedLinkContainer').style.display = 'block';
+            document.getElementById('generatedLink').innerHTML = url;
+            
+            document.getElementById('copyLinkBtn')?.addEventListener('click', () => {
+                navigator.clipboard.writeText(url);
+                alert('Link copied!');
+            });
+            
+            document.getElementById('useLinkBtn')?.addEventListener('click', () => {
+                window.location.hash = base64;
+                loadFromURL();
+            });
+        });
     }
     
     // Menu with previous questions
@@ -706,7 +876,7 @@
         
         const list = panel.querySelector('#menuHistoryList');
         if (historyEntries.length === 0) {
-            list.innerHTML = '<li style="background:transparent; text-align:center;">No history yet</li>';
+            list.innerHTML = '<li style="background:transparent; text-align:center;">No history yet. Create a lesson first!</li>';
         } else {
             historyEntries.forEach((entry, idx) => {
                 const li = document.createElement('li');
@@ -767,41 +937,6 @@
         addLog(`Hint ${showHint ? 'shown' : 'hidden'}`);
     });
     
-    // Empty state with AI prompt
-    function showEmptyPrompt() {
-        questionEl.innerText = "🤖 AI Hanzi Learning Assistant";
-        boxesContainer.innerHTML = '';
-        const div = document.createElement('div');
-        div.className = 'ai-prompt-area';
-        div.innerHTML = `
-            <strong>✨ No active quiz</strong><br>
-            <div style="text-align:left; font-size:0.75rem; margin-top:8px;">
-            <strong>Standard payload format:</strong><br>
-            <code>{"question":"...","answer":"汉字","pinyin":["han","zi"],"hint":"..."}</code>
-            </div>
-            <textarea id="aiPromptText" rows="5">Create a Hanzi practice JSON following the standard format:
-{
-  "question": "How do you say 'Hello' in Chinese?",
-  "answer": "你好",
-  "pinyin": ["nǐ", "hǎo"],
-  "hint": "Two characters meaning 'you' and 'good'"
-}
-Encode to base64 and use: #BASE64_HERE</textarea>
-            <button id="copyPromptBtn">📋 Copy Prompt</button>
-            <div style="margin-top:12px; font-size:0.7rem; word-break:break-all;">
-            <strong>Example link:</strong><br>
-            <code>#eyJxdWVzdGlvbiI6IkhvdyBkbyB5b3Ugc2F5ICdIZWxsbycgaW4gQ2hpbmVzZT8iLCJhbnN3ZXIiOiLkvaDlpb0iLCJwaW55aW4iOlsiJW4kIiwiaMOjbyJdLCJoaW50IjoiVHdvIGNoYXJhY3RlcnMifQ==</code>
-            </div>
-        `;
-        boxesContainer.appendChild(div);
-        activeCanvasDiv.innerHTML = '<div style="text-align:center; padding:2rem;">⬆️ Add #payload to URL</div>';
-        document.getElementById('copyPromptBtn')?.addEventListener('click', () => {
-            const txt = document.getElementById('aiPromptText').value;
-            navigator.clipboard.writeText(txt);
-            addLog("📋 AI prompt copied");
-        });
-    }
-    
     // Resize handler
     let resizeTimer;
     window.addEventListener('resize', () => {
@@ -813,7 +948,7 @@ Encode to base64 and use: #BASE64_HERE</textarea>
     
     window.addEventListener('hashchange', () => {
         const loaded = loadFromURL();
-        if (!loaded && !currentPayload) showEmptyPrompt();
+        if (!loaded && !currentPayload) showBuilderUI();
         else if (loaded && currentPayload) renderBoxes();
     });
     
@@ -822,7 +957,7 @@ Encode to base64 and use: #BASE64_HERE</textarea>
         loadSettings();
         loadHistoryFromLocal();
         const loaded = loadFromURL();
-        if (!loaded) showEmptyPrompt();
+        if (!loaded) showBuilderUI();
     }
     
     init();

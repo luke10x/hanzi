@@ -9,15 +9,26 @@
 
 <style>
 body { margin:0; font-family:sans-serif; display:flex; flex-direction:column; height:100vh; }
-.topbar { display:flex; gap:6px; padding:6px; background:#222; color:#fff; align-items:center; }
+
+.topbar {
+  display:flex; gap:6px; padding:6px;
+  background:#222; color:#fff; align-items:center;
+}
+
 button { padding:6px; cursor:pointer; }
+
 .row { padding:8px; }
+
 .boxes { display:flex; flex-wrap:wrap; gap:6px; }
+
 .char-box {
-  width:64px; height:64px; border:2px solid #ccc;
-  display:flex; flex-direction:column; justify-content:center; align-items:center;
+  width:64px; height:64px;
+  border:2px solid #ccc;
+  display:flex; flex-direction:column;
+  justify-content:center; align-items:center;
   cursor:pointer;
 }
+
 .active { border-color:orange; }
 .done { background:#c8f7c5; }
 .in-progress { background:#fff3cd; }
@@ -26,21 +37,57 @@ button { padding:6px; cursor:pointer; }
 
 .log {
   height:140px; overflow:auto;
-  background:#111; color:#0f0; font-size:12px; padding:6px;
+  background:#111; color:#0f0;
+  font-size:12px; padding:6px;
 }
 
 .menu {
-  position:fixed; left:0; top:0; width:220px; height:100%;
-  background:#333; color:#fff; padding:10px;
+  position:fixed;
+  left:0; top:0;
+  width:240px; height:100%;
+  background:#333; color:#fff;
   transform:translateX(-100%);
   transition:0.2s;
+  padding:10px;
   overflow:auto;
+  z-index:1000;
 }
+
 .menu.open { transform:translateX(0); }
 
-.menu-item { padding:6px; border-bottom:1px solid #555; cursor:pointer; }
+.menu-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
 
-input { width:100%; margin-bottom:6px; padding:6px; }
+.menu-item {
+  padding:6px;
+  border-bottom:1px solid #555;
+  cursor:pointer;
+}
+
+.overlay {
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.4);
+  display:none;
+  z-index:999;
+}
+
+.overlay.show { display:block; }
+
+textarea {
+  width:100%;
+  height:180px;
+}
+
+input {
+  width:100%;
+  margin-bottom:6px;
+  padding:6px;
+}
 </style>
 </head>
 
@@ -53,6 +100,8 @@ input { width:100%; margin-bottom:6px; padding:6px; }
   <button onclick="toggleSetting('outline')">Contour</button>
   <button onclick="toggleSetting('hint')">Hint</button>
 </div>
+
+<div id="overlay" class="overlay" onclick="closeMenu()"></div>
 
 <div id="menu" class="menu"></div>
 <div id="app"></div>
@@ -72,7 +121,7 @@ function decode64(str){
 let data=null, writer=null;
 let active=0;
 let progress=[];
-let totalMistakes=[];
+let mistakes=[];
 let settings = JSON.parse(localStorage.getItem("settings")||"{}");
 
 // ---------- UTIL ----------
@@ -91,10 +140,8 @@ function parse(){
   if(!location.hash) return null;
   try{
     const d = JSON.parse(decode64(location.hash.slice(1)));
-
     d.answer = Array.from(d.answer.replace(/\s+/g,''));
     while((d.pinyin||[]).length < d.answer.length) d.pinyin.push("");
-
     return d;
   }catch(e){
     console.error(e);
@@ -107,12 +154,21 @@ function renderBuilder(){
   app.innerHTML = `
   <div class="row">
     <h3>Create Exercise</h3>
+
     <input id="q" placeholder="Question">
-    <input id="a" placeholder="Answer e.g. 你好">
-    <input id="p" placeholder="Pinyin e.g. nǐ hǎo">
-    <input id="h" placeholder="Hint (optional)">
+    <input id="a" placeholder="Answer (e.g. 你好)">
+    <input id="p" placeholder="Pinyin (e.g. nǐ hǎo)">
+    <input id="h" placeholder="Hint">
+
     <button onclick="build()">Generate & Start</button>
-  </div>`;
+
+    <h4>AI Prompt (copy this)</h4>
+    <textarea id="promptText" readonly></textarea>
+    <button onclick="copyPrompt()">Copy Prompt</button>
+  </div>
+  `;
+
+  document.getElementById("promptText").value = PROMPT_TEMPLATE;
 }
 
 function build(){
@@ -122,24 +178,32 @@ function build(){
     pinyin:p.value.trim()?p.value.trim().split(/\s+/):[],
     hint:h.value.trim()
   };
+
   location.href = location.pathname + "#" + encode64(JSON.stringify(payload));
+}
+
+function copyPrompt(){
+  navigator.clipboard.writeText(PROMPT_TEMPLATE);
 }
 
 // ---------- TRAINER ----------
 function renderTrainer(){
   app.innerHTML = `
   <div class="row">${data.question}</div>
+
   <div id="hintRow" class="row" style="display:${settings.hint?'block':'none'}">
     💡 ${data.hint||''}
   </div>
+
   <div id="boxes" class="row boxes"></div>
   <div id="canvas"></div>
+
   <div class="row"><button onclick="copyLog()">Copy Log</button></div>
   <div id="log" class="log"></div>
   `;
 
   progress = new Array(data.answer.length).fill(null);
-  totalMistakes = new Array(data.answer.length).fill(0);
+  mistakes = new Array(data.answer.length).fill(0);
 
   renderBoxes();
   setTimeout(()=>loadChar(0),50);
@@ -151,9 +215,7 @@ function renderTrainer(){
 }
 
 function renderBoxes(){
-  const b=document.getElementById('boxes');
-  b.innerHTML='';
-
+  boxes.innerHTML='';
   data.answer.forEach((ch,i)=>{
     const d=document.createElement('div');
     d.className="char-box";
@@ -165,32 +227,28 @@ function renderBoxes(){
       <div style="font-size:10px">${data.pinyin[i]}</div>
     `;
     d.onclick=()=>loadChar(i);
-    b.appendChild(d);
+    boxes.appendChild(d);
   });
 }
 
 function loadChar(i){
   active=i;
-
-  const canvas=document.getElementById('canvas');
   canvas.innerHTML='';
-
   const size=canvas.offsetWidth;
 
   writer = HanziWriter.create('canvas', data.answer[i], {
     width:size,
     height:size,
     showCharacter: !!settings.outline,
-    showOutline: !!settings.outline,
-    padding:5
+    showOutline: !!settings.outline
   });
 
   writer.quiz({
     onMistake:(s)=>{
-      totalMistakes[i]++;
+      mistakes[i]++;
       progress[i]='in-progress';
       renderBoxes();
-      log(`❌ [${data.answer[i]}] stroke ${s.strokeNum} mistake (total: ${totalMistakes[i]})`);
+      log(`❌ [${data.answer[i]}] stroke ${s.strokeNum} mistake (total: ${mistakes[i]})`);
     },
     onCorrectStroke:(s)=>{
       log(`✅ [${data.answer[i]}] stroke ${s.strokeNum} correct!`);
@@ -198,11 +256,9 @@ function loadChar(i){
     onComplete:()=>{
       progress[i]='done';
       renderBoxes();
-      log(`🎉 [${data.answer[i]}] COMPLETED! Total mistakes: ${totalMistakes[i]}`);
+      log(`🎉 [${data.answer[i]}] COMPLETED! Total mistakes: ${mistakes[i]}`);
 
-      if(i+1 < data.answer.length){
-        loadChar(i+1);
-      }
+      if(i+1 < data.answer.length) loadChar(i+1);
     }
   });
 
@@ -211,11 +267,24 @@ function loadChar(i){
 
 // ---------- MENU ----------
 function toggleMenu(){
-  menu.classList.toggle("open");
+  menu.classList.add("open");
+  overlay.classList.add("show");
 }
+
+function closeMenu(){
+  menu.classList.remove("open");
+  overlay.classList.remove("show");
+}
+
 function renderMenu(){
   const h = JSON.parse(localStorage.getItem("history")||"[]");
-  menu.innerHTML = "<h4>History</h4>";
+
+  menu.innerHTML = `
+    <div class="menu-header">
+      <b>History</b>
+      <button onclick="closeMenu()">✖</button>
+    </div>
+  `;
 
   h.forEach(item=>{
     const d=document.createElement('div');
@@ -228,9 +297,15 @@ function renderMenu(){
     menu.appendChild(d);
   });
 }
+
 function saveHistory(){
   let h=JSON.parse(localStorage.getItem("history")||"[]");
-  h.unshift(data);
+
+  // prevent duplicates
+  if(!h.find(x=>x.question===data.question)){
+    h.unshift(data);
+  }
+
   localStorage.setItem("history",JSON.stringify(h.slice(0,20)));
 }
 
@@ -252,9 +327,32 @@ function copyLog(){
   navigator.clipboard.writeText(log.innerText);
 }
 
+// ---------- PROMPT ----------
+const PROMPT_TEMPLATE = `
+You are an AI assistant helping a user practice Chinese characters using the Hanzi Writer app.
+
+To generate a quiz link, create a JSON object with:
+- "question"
+- "answer"
+- "pinyin"
+- "hint"
+
+Then base64 encode JSON and append to:
+${location.origin}${location.pathname}#<base64>
+
+Example:
+{
+  "question": "How do you say 'Thank you' in Chinese?",
+  "answer": "谢谢",
+  "pinyin": ["xiè","xie"],
+  "hint": "Two identical characters"
+}
+`;
+
 // ---------- BOOT ----------
 const app=document.getElementById('app');
 const menu=document.getElementById('menu');
+const overlay=document.getElementById('overlay');
 
 data = parse();
 

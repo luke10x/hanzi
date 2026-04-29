@@ -119,6 +119,7 @@ All good except
 Claude
 ------
 
+- History does not work, the panel is too transparent and hard to read, there is no close button for it, and it also does not seem to persist anything
 
 Qwen:
 ----
@@ -142,4 +143,6 @@ Grok
 
 Limit reached, disqualified
 
-kkk
+kimi
+----
+
