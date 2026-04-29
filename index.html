@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Implementations Hub</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --border: #e2e8f0;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            margin-bottom: 2rem;
+            font-size: 1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .card {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.25rem;
+            background: #f1f5f9;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            text-decoration: none;
+            color: var(--accent);
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(37, 99, 235, 0.25);
+        }
+
+        .card span { font-size: 0.85rem; opacity: 0.7; margin-top: 4px; font-weight: normal; }
+
+        .resources {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+
+        .resources a {
+            color: var(--accent);
+            text-decoration: none;
+            margin: 0 0.5rem;
+        }
+
+        .resources a:hover { text-decoration: underline; }
+
+        @media (max-width: 480px) {
+            .container { padding: 1.5rem; }
+            h1 { font-size: 1.5rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 AI Implementations</h1>
+        <p class="subtitle">Select a platform to test or interact with</p>
+
+        <div class="grid">
+            <a href="chat-gpt.html" class="card">ChatGPT<span>OpenAI</span></a>
+            <a href="claude.html" class="card">Claude<span>Anthropic</span></a>
+            <a href="copilot.html" class="card">Copilot<span>Microsoft</span></a>
+            <a href="deepseek.html" class="card">DeepSeek<span>DeepSeek AI</span></a>
+            <a href="grok.html" class="card">Grok<span>xAI</span></a>
+            <a href="kimi.html" class="card">Kimi<span>Moonshot AI</span></a>
+            <a href="le-chat.html" class="card">Le Chat<span>Mistral</span></a>
+            <a href="qwen.html" class="card">Qwen<span>Alibaba</span></a>
+            <a href="index2.html" class="card">Index 2<span>Legacy/Backup</span></a>
+        </div>
+
+        <div class="resources">
+            📄 Also available: <a href="prompts.md">prompts.md</a>
+        </div>
+    </div>
+</body>
+</html>
