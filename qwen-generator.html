@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎴 Hanzi Blind Link Generator</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg: #f8fafc;
+      --text: #0f172a;
+      --text-light: #64748b;
+      --border: #e2e8f0;
+      --card-bg: #ffffff;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px 16px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    header { text-align: center; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.6rem; margin-bottom: 6px; }
+    .subtitle { color: var(--text-light); font-size: 0.95rem; }
+    
+    .controls {
+      display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 1.5rem;
+    }
+    select, button {
+      padding: 10px 16px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 1rem; background: var(--card-bg); cursor: pointer; transition: all 0.2s;
+    }
+    button {
+      background: var(--primary); color: white; border: none; font-weight: 600;
+    }
+    button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    
+    #result {
+      min-height: 70px; display: flex; align-items: center; justify-content: center; margin-bottom: 2rem;
+    }
+    #result a {
+      font-size: 2.2rem; font-weight: 700; color: var(--primary);
+      text-decoration: none; border: 3px dashed var(--primary);
+      padding: 14px 32px; border-radius: 12px; background: var(--card-bg);
+      transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    #result a:hover { background: #eef2ff; transform: scale(1.03); }
+    #result .placeholder { color: var(--text-light); font-style: italic; }
+    #result .error { color: #ef4444; font-weight: 500; }
+
+    .csv-container { margin-top: 1rem; }
+    .csv-container label {
+      display: block; font-weight: 600; margin-bottom: 8px; font-size: 1rem;
+    }
+    textarea {
+      width: 100%; min-height: 260px; padding: 14px; font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+      font-size: 0.88rem; border: 1px solid var(--border); border-radius: 8px; resize: vertical;
+      background: var(--card-bg); color: #334155; line-height: 1.6; tab-size: 2;
+    }
+    textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+    
+    .format-guide {
+      background: #f1f5f9; padding: 12px 14px; border-radius: 8px; margin-top: 10px; font-size: 0.85rem; color: #475569;
+    }
+    .format-guide code { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-weight: 500; }
+    
+    footer { text-align: center; margin-top: 2rem; color: var(--text-light); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎴 Hanzi Blind Link Generator</h1>
+    <p class="subtitle">Answer hidden. Click <code>????</code> to open the Hanzi Writer quiz.</p>
+  </header>
+
+  <div class="controls">
+    <select id="typeFilter">
+      <option value="all">All Types</option>
+      <option value="vocabulary">Vocabulary</option>
+      <option value="radical">Radicals</option>
+      <option value="bonus-character">Bonus Characters</option>
+    </select>
+    <button id="generateBtn">🎲 Generate Link</button>
+  </div>
+
+  <div id="result">
+    <span class="placeholder">Click "Generate Link" to start</span>
+  </div>
+
+  <div class="csv-container">
+    <label for="csvInput">📝 Editable CSV Source Data</label>
+    <textarea id="csvInput" spellcheck="false">Question/English Meaning,Chinese Characters,Pinyin (in parentheses),Type,Notes
+Homepage,首页,(shǒu yè),vocabulary,App navigation
+Discover,发现,(fā xiàn),vocabulary,App navigation
+Message,消息,(xiāo xi),vocabulary,App navigation
+My / Mine,我的,(wǒ de),vocabulary,App navigation
+Settings,设置,(shè zhì),vocabulary,App navigation
+Keep going! / Add fuel,加油,(jiā yóu),vocabulary,Encouragement
+Hello,你好,(nǐ hǎo),vocabulary,Greeting
+Good night,晚安,(wǎn ān),vocabulary,Greeting
+Thank you,谢谢,(xiè xie),vocabulary,Greeting
+Help,帮助,(bāng zhù),vocabulary,Support
+Hi,嗨,(hāi),vocabulary,Greeting
+Log in,登录,(dēng lù),vocabulary,App action
+Recently,最近,(zuì jìn),vocabulary,Time reference
+Dialogue / Conversation,对话,(duì huà),vocabulary,Communication
+(Art) work,作品,(zuò pǐn),vocabulary,Creative content
+AI agent,智能体,(zhì néng tǐ),vocabulary,Tech term
+Click,点击,(diǎn jī),vocabulary,App action
+Have chatted,聊过,(liáo guò),vocabulary,Communication
+Featured selection,精选,(jīng xuǎn),vocabulary,Content category
+To study,学习,(xué xí),vocabulary,Activity
+Writing (activity),写作,(xiě zuò),vocabulary,Activity
+Entertainment,娱乐,(yú lè),vocabulary,Activity
+Water radical (three drops),氵,(shuǐ),radical,Also called 三点水 (sān diǎn shuǐ)
+Fire radical (four dots at bottom),灬,(huǒ),radical,Also called 四点底 (sì diǎn dǐ)
+Person radical (single person side),亻,(rén),radical,Also called 单人旁 (dān rén páng)
+Roof radical (cover/head),宀,(mián),radical,Also called 宝盖头 (bǎo gài tóu)
+Sun radical,日,(rì),radical,Found in 晚 (wǎn)
+Woman radical,女,(nǚ),radical,Found in 好 (hǎo)
+Speech radical,讠,(yán),radical,Also called 言字旁 (yán zì páng)
+I / me,我,(wǒ),bonus-character,Standalone character
+you,你,(nǐ),bonus-character,Standalone character
+good,好,(hǎo),bonus-character,Standalone character
+thank,谢,(xiè),bonus-character,Standalone character
+road / way / path,道,(dào),bonus-character,Ancient variant: 衜
+hot,热,(rè),bonus-character,Contains fire radical 灬
+lonely,孤,(gū),bonus-character,Practice character
+ball,球,(qiú),bonus-character,Practice character</textarea>
+    
+    <div class="csv-spec-guide">
+  <h3>📖 CSV Format Specification</h3>
+  <p class="spec-intro">Read the guide below, then click the button to copy the full specification for AI/manual use.</p>
+
+  <div class="spec-preview">
+    <h4>🔍 Record Types</h4>
+    <ul>
+      <li><code>vocabulary</code> → Standard words, phrases, or UI terms. Supports multi-character sequences.</li>
+      <li><code>radical</code> → Structural hanzi components. <strong>Always use the dictionary pinyin</strong> of the source character (e.g., 水 → <code>shuǐ</code>), not the descriptive name.</li>
+      <li><code>bonus-character</code> → Standalone characters for reinforcement or etymology. Treated as single-character drills.</li>
+    </ul>
+
+    <h4>📝 Data Examples by Type</h4>
+    <div class="example-lines">
+      <span>Hello,你好,(nǐ hǎo),vocabulary,Common daily greeting</span>
+      <span>Water radical,氵,(shuǐ),radical,Also called 三点水 (sān diǎn shuǐ)</span>
+      <span>I / me,我,(wǒ),bonus-character,High-frequency pronoun</span>
+    </div>
+
+    <h4>📏 Core Rules</h4>
+    <ul>
+      <li>Header must be exact: <code>Question/English Meaning,Chinese Characters,Pinyin (in parentheses),Type,Notes</code></li>
+      <li>Pinyin wrapped in <code>()</code>, syllables space-separated. Length must match character count.</li>
+      <li>One entry per line. Leave <code>Notes</code> empty if unused.</li>
+      <li>Wrap fields containing commas in double quotes: <code>"Word, phrase",汉字,(pīn yīn),type,hint</code></li>
+    </ul>
+  </div>
+
+  <button id="copyFullSpecBtn" class="copy-spec-btn">📋 Copy Full Specification to Clipboard</button>
+</div>
+
+<style>
+  .csv-spec-guide {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    max-width: 100%;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    color: #0f172a;
+  }
+  .csv-spec-guide h3 { margin: 0 0 6px; font-size: 1.15rem; }
+  .spec-intro { color: #64748b; font-size: 0.9rem; margin-bottom: 16px; }
+  .spec-preview { background: #f8fafc; padding: 14px 16px; border-radius: 8px; margin-bottom: 16px; }
+  .spec-preview h4 { margin: 12px 0 8px; font-size: 0.95rem; }
+  .spec-preview h4:first-child { margin-top: 0; }
+  .spec-preview ul { margin: 0; padding-left: 20px; }
+  .spec-preview li { margin-bottom: 6px; font-size: 0.88rem; line-height: 1.5; }
+  .spec-preview code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-weight: 500; font-family: 'SFMono-Regular', Consolas, monospace; }
+  
+  .example-lines {
+    background: #f1f5f9;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: 0.84rem;
+    color: #334155;
+    line-height: 1.7;
+    margin: 8px 0 12px;
+    border-left: 3px solid #4f46e5;
+  }
+  .example-lines span { display: block; }
+  
+  .copy-spec-btn {
+    width: 100%; padding: 11px 16px; background: #4f46e5; color: white; border: none;
+    border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-size: 0.95rem;
+  }
+  .copy-spec-btn:hover { background: #4338ca; transform: translateY(-1px); }
+  .copy-spec-btn:active { transform: translateY(0); }
+  
+  @media (max-width: 600px) {
+    .csv-spec-guide { padding: 16px; }
+    .example-lines { font-size: 0.8rem; }
+  }
+</style>
+
+<script>
+  const FULL_SPEC = `=== HANZI CSV GENERATION SPECIFICATION ===
+HEADER ROW (MUST BE EXACT):
+Question/English Meaning,Chinese Characters,Pinyin (in parentheses),Type,Notes
+
+COLUMN DEFINITIONS:
+1. Question/English Meaning: Prompt shown to the learner. Can contain spaces, punctuation, or quotes.
+2. Chinese Characters: ONLY the hanzi/radical to practice. No extra spaces. Multi-character words are allowed.
+3. Pinyin (in parentheses): Dictionary pronunciation wrapped in (). Syllables separated by single spaces. e.g., (nǐ hǎo)
+4. Type: Must be exactly one of: vocabulary, radical, bonus-character
+5. Notes: Optional hint/mnemonic/context. Leave empty if unused, but keep the column/trailing comma.
+
+RECORD TYPES & EXAMPLES:
+• vocabulary → Standard words, phrases, app UI terms. Supports multi-character sequences.
+  Example: Hello,你好,(nǐ hǎo),vocabulary,Common daily greeting
+• radical → Structural components of hanzi. ALWAYS use the dictionary pinyin of the source character, NOT the descriptive shape name.
+  Example: Water radical,氵,(shuǐ),radical,Also called 三点水 (sān diǎn shuǐ)
+• bonus-character → Standalone characters for reinforcement or etymology. Treated as single-character drills.
+  Example: I / me,我,(wǒ),bonus-character,High-frequency pronoun
+
+FORMATTING RULES:
+- Keep the exact header row as shown above. Do not add/remove columns.
+- One entry per line. Skip empty lines.
+- Pinyin syllable count in () must exactly match the number of Chinese characters.
+- If any field contains a comma, wrap the entire field in double quotes: "Word, phrase",汉字,(pīn yīn),type,hint
+- Type is case-insensitive in most parsers, but use lowercase for consistency: vocabulary, radical, bonus-character
+- Do not include stroke counts, images, or markdown in the CSV.`;
+
+  document.getElementById('copyFullSpecBtn').addEventListener('click', function() {
+    navigator.clipboard.writeText(FULL_SPEC).then(() => {
+      const btn = this;
+      const original = btn.textContent;
+      btn.textContent = '✅ Full Specification Copied!';
+      btn.style.background = '#22c55e';
+      setTimeout(() => {
+        btn.textContent = original;
+        btn.style.background = '';
+      }, 2000);
+    }).catch(() => {
+      // Fallback for older environments
+      const textarea = document.createElement('textarea');
+      textarea.value = FULL_SPEC;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      const btn = this;
+      btn.textContent = '✅ Copied!';
+      setTimeout(() => btn.textContent = '📋 Copy Full Specification to Clipboard', 2000);
+    });
+  });
+</script>
+  </div>
+
+  <footer>
+    <p>All processing happens locally in your browser. No data is sent anywhere.</p>
+  </footer>
+
+  <script>
+    // ===== CORE LOGIC =====
+    function parseCSV(text) {
+      const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) return [];
+      
+      const headers = lines[0].split(',').map(h => h.trim());
+      const rows = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const vals = lines[i].split(',').map(v => v.trim());
+        if (vals.length < headers.length) continue; // Skip malformed rows
+        
+        const row = {};
+        headers.forEach((h, idx) => row[h] = vals[idx] || '');
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function parsePinyin(str) {
+      const clean = str.replace(/^\(|\)$/g, '').trim();
+      return clean ? clean.split(/\s+/).filter(Boolean) : [];
+    }
+
+    function generateQuizLink(question, answer, pinyinArray, hint = '', id = '') {
+      const payload = { question, answer, pinyin: pinyinArray, hint, id };
+      const jsonStr = JSON.stringify(payload);
+      // UTF-8 safe Base64 encoding
+      const encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+      return `https://luke10x.dev/hanzi/kimi.html#${encoded}`;
+    }
+
+    function generateLink() {
+      const resultEl = document.getElementById('result');
+      const csvText = document.getElementById('csvInput').value;
+      const filter = document.getElementById('typeFilter').value;
+      
+      const items = parseCSV(csvText);
+      if (items.length === 0) {
+        resultEl.innerHTML = '<span class="error">⚠️ CSV is empty or missing the header row.</span>';
+        return;
+      }
+
+      const filtered = filter === 'all' ? items : items.filter(i => i.Type && i.Type.toLowerCase() === filter);
+      if (filtered.length === 0) {
+        resultEl.innerHTML = '<span class="error">⚠️ No items match the selected type.</span>';
+        return;
+      }
+
+      const item = filtered[Math.floor(Math.random() * filtered.length)];
+      const pinyin = parsePinyin(item['Pinyin (in parentheses)']);
+      
+      // Validate required fields
+      if (!item['Question/English Meaning'] || !item['Chinese Characters']) {
+        resultEl.innerHTML = '<span class="error">⚠️ Missing question or characters in CSV.</span>';
+        return;
+      }
+
+      const link = generateQuizLink(
+        item['Question/English Meaning'],
+        item['Chinese Characters'],
+        pinyin,
+        item.Notes || '',
+        `gen_${Date.now()}_${Math.floor(Math.random()*1000)}`
+      );
+
+      resultEl.innerHTML = `<a href="${link}" target="_blank" rel="noopener noreferrer">????</a>`;
+    }
+
+    // ===== EVENT LISTENERS =====
+    document.getElementById('generateBtn').addEventListener('click', generateLink);
+    document.getElementById('typeFilter').addEventListener('change', () => {
+      document.getElementById('result').innerHTML = '<span class="placeholder">Filter updated. Click generate!</span>';
+    });
+
+    // Allow Tab key inside textarea for easier editing
+    document.getElementById('csvInput').addEventListener('keydown', function(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = this.selectionStart;
+        const end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 2;
+      }
+    });
+  </script>
+</body>
+</html>

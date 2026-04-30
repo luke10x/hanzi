@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Hanzi Quiz – Hidden Character (Editable CSV)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: system-ui, 'Segoe UI', 'Noto Sans', sans-serif;
+        }
+        body {
+            background: #f0f2f5;
+            margin: 0;
+            min-height: 100vh;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+            padding: 2rem;
+        }
+        h1 {
+            font-size: 1.8rem;
+            margin-top: 0;
+            color: #0f172a;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .badge {
+            background: #e6f0ff;
+            color: #1e40af;
+            border-radius: 40px;
+            padding: 0.2rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: normal;
+        }
+        textarea {
+            width: 100%;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            padding: 1rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 16px;
+            background: #fefce8;
+            white-space: pre;
+            overflow-x: auto;
+            margin: 0.5rem 0 1rem 0;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.7rem 1.8rem;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.2s;
+            margin: 0.5rem 0 1rem 0;
+        }
+        button:hover {
+            background: #2563eb;
+            transform: scale(0.97);
+        }
+        .quiz-area {
+            background: #f8fafc;
+            border-radius: 28px;
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+            margin: 1rem 0 2rem 0;
+        }
+        .quiz-link {
+            display: inline-block;
+            background: #0f172a;
+            color: white;
+            text-decoration: none;
+            padding: 0.8rem 2.5rem;
+            border-radius: 60px;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+            transition: 0.2s;
+            font-family: monospace;
+        }
+        .quiz-link:hover {
+            background: #1e293b;
+            transform: scale(1.02);
+        }
+        .info {
+            font-size: 0.85rem;
+            color: #475569;
+            margin-top: 1rem;
+        }
+        .stats {
+            background: #eef2ff;
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            display: inline-block;
+            font-size: 0.8rem;
+            margin-left: 1rem;
+        }
+        hr {
+            margin: 1.5rem 0;
+            border: none;
+            border-top: 1px solid #e2e8f0;
+        }
+        .instructions {
+            background: #fefce8;
+            border-left: 5px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 16px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            margin-top: 1rem;
+        }
+        .footer {
+            font-size: 0.75rem;
+            color: #64748b;
+            text-align: center;
+            margin-top: 1.5rem;
+        }
+        details summary {
+            cursor: pointer;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🎲 Random Hanzi Quiz <span class="badge">???? link hides the character</span></h1>
+    <p>Edit the CSV below (Chinese, Pinyin, English). Each row is one word/phrase/radical.<br>
+    Click <strong>Pick a random word</strong> – the tool selects one row, generates a <strong>????</strong> link, and shows nothing else.<br>
+    Open the link to discover which character you must write in Hanzi Writer.</p>
+
+    <label><strong>📝 CSV Data (editable)</strong></label>
+    <textarea id="csvData" rows="12"></textarea>
+
+    <button id="randomBtn">🔀 Pick a random word → generate ???? link</button>
+    <span id="stats" class="stats">ready</span>
+
+    <div class="quiz-area">
+        <div id="linkContainer">
+            <p style="color: #64748b;">✨ Press the button above to start</p>
+        </div>
+    </div>
+
+    <hr>
+
+    <details>
+        <summary><strong>📘 Instructions for AI chat agent (how to format CSV)</strong></summary>
+        <div class="instructions">
+            <p>Copy the text below and give it to any AI to explain how to structure your own collection:</p>
+            <textarea id="instructionText" rows="9" readonly style="background:#f1f5f9; font-family: monospace;"></textarea>
+        </div>
+    </details>
+    <div class="footer">
+        ✅ Uses UTF‑8 base64 encoding. After practicing, copy the session log from Hanzi Writer and share with your tutor.
+    </div>
+</div>
+
+<script>
+    // --------------------------------------------------------------
+    // 1. Default CSV (all phrases, words, radicals we studied)
+    // --------------------------------------------------------------
+    const defaultCSV = `Chinese,Pinyin,English,Notes
+首页,shǒu yè,Homepage,2 characters
+发现,fā xiàn,Discover,2 characters
+消息,xiāo xi,Message,2 characters
+我的,wǒ de,My / Mine,2 characters
+设置,shè zhì,Settings,2 characters
+加油,jiā yóu,Keep going! / Add fuel,2 characters
+你好,nǐ hǎo,Hello,2 characters
+晚安,wǎn ān,Good night,2 characters
+谢谢,xiè xie,Thank you,2 chars (2nd neutral)
+帮助,bāng zhù,Help,2 characters
+嗨,hāi,Hi,1 character
+登录,dēng lù,Log in,2 characters
+最近,zuì jìn,Recently,2 characters
+对话,duì huà,Dialogue,2 characters
+作品,zuò pǐn,Art work,2 characters
+智能体,zhì néng tǐ,AI agent,3 characters
+点击,diǎn jī,Click,2 characters
+聊过,liáo guò,Have chatted,2 characters
+精选,jīng xuǎn,Featured selection,2 characters
+学习,xué xí,To study,2 characters
+写作,xiě zuò,Writing (activity),2 characters
+娱乐,yú lè,Entertainment,2 characters
+我,wǒ,I / me,Single character
+你,nǐ,you,Single character
+好,hǎo,good,Single character
+谢,xiè,thank,Single character
+道,dào,road / way,Single character
+热,rè,hot,Single character
+孤,gū,lonely,Single character
+球,qiú,ball,Single character
+衜,dào,ancient variant of 道,Rare – may lack stroke data
+氵,sān diǎn shuǐ,water radical,Radical – may not be drawable
+灬,sì diǎn dǐ,fire radical (4 dots),Radical – may not be drawable`;
+
+    // Helper: UTF-8 → base64
+    function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    // Parse CSV text into array of { chinese, pinyinRaw, english }
+    function parseCSV(csvText) {
+        const lines = csvText.trim().split(/\r?\n/);
+        if (lines.length < 2) return [];
+        const headers = lines[0].split(',').map(h => h.trim());
+        const chineseIdx = headers.indexOf('Chinese');
+        const pinyinIdx = headers.indexOf('Pinyin');
+        const englishIdx = headers.indexOf('English');
+        if (chineseIdx === -1 || pinyinIdx === -1 || englishIdx === -1) {
+            alert("CSV must have columns: Chinese, Pinyin, English (case-sensitive).");
+            return [];
+        }
+        const items = [];
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            // Simple split – assumes no commas inside fields
+            const parts = line.split(',');
+            if (parts.length < 3) continue;
+            const chinese = parts[chineseIdx]?.trim() || '';
+            const pinyinRaw = parts[pinyinIdx]?.trim() || '';
+            const english = parts[englishIdx]?.trim() || '';
+            if (chinese && pinyinRaw && english) {
+                items.push({ chinese, pinyinRaw, english });
+            }
+        }
+        return items;
+    }
+
+    // Build Hanzi Writer quiz URL from an item
+    function buildQuizUrl(item) {
+        const pinyinArray = item.pinyinRaw.split(/\s+/).filter(p => p.length > 0);
+        if (pinyinArray.length === 0) return null;
+        const jsonObj = {
+            question: item.english,
+            answer: item.chinese,
+            pinyin: pinyinArray
+        };
+        try {
+            const jsonString = JSON.stringify(jsonObj);
+            const base64 = utf8ToBase64(jsonString);
+            return `https://luke10x.dev/hanzi/kimi.html#${base64}`;
+        } catch(e) {
+            console.error("Encoding error", e);
+            return null;
+        }
+    }
+
+    // Pick random row from current CSV and display only a "????" link
+    function pickRandomAndDisplay() {
+        const csvText = document.getElementById('csvData').value;
+        const items = parseCSV(csvText);
+        if (!items.length) {
+            document.getElementById('linkContainer').innerHTML = `<p style="color:#b91c1c;">⚠️ No valid rows found. Check CSV format (Chinese, Pinyin, English columns).</p>`;
+            document.getElementById('stats').innerHTML = `0 valid entries`;
+            return;
+        }
+        const randomIndex = Math.floor(Math.random() * items.length);
+        const randomItem = items[randomIndex];
+        const url = buildQuizUrl(randomItem);
+        if (!url) {
+            document.getElementById('linkContainer').innerHTML = `<p style="color:#b91c1c;">❌ Failed to generate link for "${randomItem.chinese}". Verify pinyin spelling.</p>`;
+            document.getElementById('stats').innerHTML = `${items.length} entries (error on one)`;
+            return;
+        }
+        // Show only a link with "????" – no preview
+        document.getElementById('linkContainer').innerHTML = `
+            <a href="${url}" target="_blank" class="quiz-link">????</a>
+            <div class="info">🔒 The character is hidden. Click "????" to open Hanzi Writer and discover what you need to write.</div>
+        `;
+        document.getElementById('stats').innerHTML = `${items.length} entries | last pick: random`;
+    }
+
+    // Set instruction text for AI chat agent
+    function setInstructionText() {
+        const instruction = `=== INSTRUCTIONS FOR AI CHAT AGENT ===
+To create a CSV collection for the Random Hanzi Quiz tool, use the following exact format:
+
+CSV columns (case‑sensitive):
+Chinese,Pinyin,English,Notes(optional)
+
+Rules:
+- "Chinese" : the Chinese character(s) (e.g., 你好, 学习, 我)
+- "Pinyin" : space‑separated pinyin with tone marks or numbers (e.g., "nǐ hǎo" or "ni3 hao3")
+- "English" : plain English meaning
+- You can add a fourth "Notes" column (ignored by the quiz).
+
+Example rows:
+首页,shǒu yè,Homepage
+发现,fā xiàn,Discover
+你好,nǐ hǎo,Hello
+谢谢,xiè xie,Thank you
+
+The user pastes this CSV into the textarea. The tool picks a random row, hides all info, and shows only a "????" link.
+Clicking the link opens Hanzi Writer with the chosen character.
+
+To create your own CSV, list each word/phrase/radical on a new line, following the three‑column format.
+End of instructions.`;
+        document.getElementById('instructionText').value = instruction;
+    }
+
+    // Initialize: load default CSV, set button listener, stats
+    function init() {
+        const textarea = document.getElementById('csvData');
+        textarea.value = defaultCSV;
+        setInstructionText();
+        document.getElementById('randomBtn').addEventListener('click', pickRandomAndDisplay);
+        // Show initial count
+        const initialItems = parseCSV(defaultCSV);
+        document.getElementById('stats').innerHTML = `${initialItems.length} entries ready`;
+        document.getElementById('linkContainer').innerHTML = `<p style="color: #64748b;">✨ Press "Pick a random word" to start</p>`;
+    }
+    init();
+</script>
+</body>
+</html>
